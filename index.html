@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>YuungPlaylist</title>
+
+  <!-- Hỗ trợ iPhone -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .upload-box {
+      background: #222;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 20px;
+    }
+    audio {
+      width: 100%;
+      margin-top: 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>🎵 YuungPlaylist</h1>
+  <p>Chọn file MP4 để nghe nhạc offline ngay!</p>
+
+  <div class="upload-box">
+    <input type="file" accept="audio/mp4,video/mp4" id="fileInput">
+    <audio id="player" controls></audio>
+  </div>
+
+  <script>
+    document.getElementById("fileInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        const player = document.getElementById("player");
+        player.src = url;
+        player.play();
+      }
+    });
+  </script>
+
+</body>
+</html>
