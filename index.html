@@ -1,56 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>YuungPlaylist</title>
-
-  <!-- Hỗ trợ iPhone -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
-    .upload-box {
-      background: #222;
-      padding: 20px;
-      border-radius: 12px;
-      margin-top: 20px;
-    }
-    audio {
-      width: 100%;
-      margin-top: 15px;
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Yuung Playlist — Offline v2</title>
+<meta name="description" content="Yuung Playlist — offline music player, shuffle, multi-device export/import, PWA" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<style>
+  :root{
+    --bg:#e6f9ff;            /* xanh biển nhạt */
+    --card:#ffffff;
+    --muted:#3b5570;
+    --accent:#0b7fa8;
+    --glass:rgba(255,255,255,0.6);
+    --soft-shadow: 0 6px 18px rgba(11,127,168,0.08);
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,var(--bg),#dff6fb);color:#053b4a}
+  .wrap{max-width:980px;margin:18px auto;padding:18px;background:linear-gradient(180deg,rgba(255,255,255,0.85),rgba(255,255,255,0.95));border-radius:14px;box-shadow:var(--soft-shadow)}
+  header{display:flex;gap:12px;align-items:center}
+  .logo{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:28px;background:linear-gradient(135deg,var(--accent),#38c1e0);color:white}
+  h1{margin:0;font-size:20px}
+  p.lead{margin:0;color:var(--muted);font-size:13px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .btn{background:var(--card);border:1px solid rgba(11,127,168,0.06);padding:8px 12px;border-radius:10px;cursor:pointer;box-shadow:0 2px 6px rgba(11,127,168,0.04)}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),#2bb1d1);color:white;font-weight:600}
+  .drop{margin-top:12px;padding:18px;border-radius:12px;border:2px dashed rgba(11,127,168,0.12);background:rgba(255,255,255,0.6);text-align:center}
+  .files{margin-top:12px;display:grid;gap:10px}
+  .track{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;background:linear-gradient(180deg,rgba(11,127,168,0.03),rgba(11,127,168,0.01));border:1px solid rgba(11,127,168,0.03)}
+  .meta{flex:1}
+  .title{font-weight:700}
+  .small{font-size:12px;color:var(--muted)}
+  .actions{display:flex;gap:8px}
+  footer{margin-top:12px;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .playerBar{position:sticky;bottom:12px;background:linear-gradient(90deg,rgba(255,255,255,0.9),rgba(255,255,255,0.95));padding:10px;border-radius:12px;display:flex;align-items:center;gap:12px;margin-top:12px;border:1px solid rgba(11,127,168,0.04)}
+  .seek{width:300px}
+  .emoji{font-size:18px;margin-right:6px}
+  @media(max-width:640px){ .seek{width:140px} .logo{width:52px;height:52px;font-size:22px} h1{font-size:16px} }
+</style>
 </head>
-
 <body>
-  <h1>🎵 YuungPlaylist</h1>
-  <p>Chọn file MP4 để nghe nhạc offline ngay!</p>
+  <div class="wrap">
+    <header>
+      <div class="logo">🎧</div>
+      <div>
+        <h1>Yuung Playlist — Offline v2</h1>
+        <p class="lead">Nghe offline 🎶 · Shuffle · Multi-device (Export/Import) · Hỗ trợ iPhone</p>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <button id="installBtn" class="btn primary" style="display:none">Cài app</button>
+      </div>
+    </header>
 
-  <div class="upload-box">
-    <input type="file" accept="audio/mp4,video/mp4" id="fileInput">
-    <audio id="player" controls></audio>
+    <section>
+      <div class="controls">
+        <label class="btn" for="fileInput">➕ Thêm file</label>
+        <input id="fileInput" type="file" accept="audio/*,video/*,audio/mp3,audio/mpeg,video/mp4" multiple style="display:none">
+        <button id="dropHint" class="btn">Kéo-thả thư mục</button>
+        <button id="shuffleBtn" class="btn">🔀 Shuffle</button>
+        <button id="exportBtn" class="btn">📤 Export</button>
+        <button id="importBtn" class="btn">📥 Import</button>
+        <button id="shareBtn" class="btn">📎 Share</button>
+        <button id="clearBtn" class="btn">🗑️ Xóa tất cả</button>
+      </div>
+
+      <div id="dropZone" class="drop">Kéo & thả file / thư mục vào đây hoặc bấm <strong>Thêm file</strong>. (Hỗ trợ nhiều file cùng lúc)</div>
+
+      <div id="tracks" class="files"></div>
+
+      <div class="playerBar" id="playerBar" style="display:none">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button id="prevBtn" class="btn">⏮</button>
+          <button id="playBtn" class="btn primary">▶️</button>
+          <button id="nextBtn" class="btn">⏭</button>
+          <button id="repeatBtn" class="btn">🔁</button>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          <div id="nowTitle" style="font-weight:700">—</div>
+          <div class="small" id="nowArtist">—</div>
+        </div>
+        <input id="seek" class="seek" type="range" min="0" max="100" value="0">
+        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+          <div class="small" id="timeLabel">0:00 / 0:00</div>
+          <button id="downloadTrack" class="btn">⬇️</button>
+        </div>
+      </div>
+
+      <p class="small" style="margin-top:10px">Gợi ý: để nghe offline trên iPhone, cài vào Home Screen hoặc dùng Safari (playsinline). Dung lượng lưu phụ thuộc trình duyệt.</p>
+    </section>
+
+    <footer>
+      <div>© Yuung • Offline Player</div>
+      <div style="margin-left:auto" class="small">Made light & simple • ❤️</div>
+    </footer>
   </div>
 
-  <script>
-    document.getElementById("fileInput").addEventListener("change", function(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
-        const player = document.getElementById("player");
-        player.src = url;
-        player.play();
+<script>
+/* ---------- IndexedDB simple store for tracks ---------- */
+const DB = 'yuung_v2'; const STORE = 'tracks';
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open(DB,1);
+    r.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const s = db.createObjectStore(STORE,{keyPath:'id',autoIncrement:true});
+        s.createIndex('name','name',{unique:false});
+      }
+    }
+    r.onsuccess = ()=>res(r.result);
+    r.onerror = ()=>rej(r.error);
+  });
+}
+function addTrack(file){
+  return openDB().then(db=>new Promise((res,rej)=>{
+    const tx = db.transaction(STORE,'readwrite'); const st = tx.objectStore(STORE);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const blob = new Blob([reader.result], {type: file.type || 'audio'});
+      const item = {name:file.name, size:file.size, type:file.type, blob, addedAt:Date.now()};
+      const req = st.add(item);
+      req.onsuccess = ()=>{ db.close(); res(req.result); };
+      req.onerror = ()=>{ db.close(); rej(req.error); };
+    };
+    reader.onerror = ()=>rej(reader.error);
+    reader.readAsArrayBuffer(file);
+  }));
+}
+function getAll(){
+  return openDB().then(db=>new Promise((res,rej)=>{
+    const tx = db.transaction(STORE,'readonly'); const st = tx.objectStore(STORE);
+    const q = st.getAll();
+    q.onsuccess = ()=>{ db.close(); res(q.result); };
+    q.onerror = ()=>{ db.close(); rej(q.error); };
+  }));
+}
+function deleteOne(id){ return openDB().then(db=>new Promise((res,rej)=>{ const tx = db.transaction(STORE,'readwrite'); const r = tx.objectStore(STORE).delete(id); r.onsuccess=()=>{db.close();res()}; r.onerror=()=>{db.close();rej(r.error)} })) }
+function clearAll(){ return openDB().then(db=>new Promise((res,rej)=>{ const tx = db.transaction(STORE,'readwrite'); const r = tx.objectStore(STORE).clear(); r.onsuccess=()=>{db.close();res()}; r.onerror=()=>{db.close();rej(r.error)} })) }
+
+/* ---------- UI + Player logic ---------- */
+const fileInput = document.getElementById('fileInput');
+const dropZone = document.getElementById('dropZone');
+const tracksEl = document.getElementById('tracks');
+const playBtn = document.getElementById('playBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const shuffleBtn = document.getElementById('shuffleBtn');
+const repeatBtn = document.getElementById('repeatBtn');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const shareBtn = document.getElementById('shareBtn');
+const clearBtn = document.getElementById('clearBtn');
+const nowTitle = document.getElementById('nowTitle');
+const nowArtist = document.getElementById('nowArtist');
+const playerBar = document.getElementById('playerBar');
+const seek = document.getElementById('seek');
+const timeLabel = document.getElementById('timeLabel');
+const downloadTrack = document.getElementById('downloadTrack');
+const installBtn = document.getElementById('installBtn');
+
+let audio = new Audio(); audio.preload = 'metadata'; audio.controls = false; audio.setAttribute('playsinline',''); // iPhone inline
+let tracks = []; // local cache of DB items
+let queue = []; // array of ids in play order
+let currentIndex = -1;
+let shuffle = false;
+let repeatMode = 0; // 0 none, 1 repeat all, 2 repeat one
+
+/* render tracks list */
+async function render(){
+  tracksEl.innerHTML = '';
+  tracks = await getAll();
+  if(tracks.length === 0){
+    tracksEl.innerHTML = '<div class="small">Chưa có file nào — thêm file hoặc kéo thả.</div>';
+    playerBar.style.display = 'none';
+    return;
+  }
+  // default queue is insertion order
+  queue = tracks.map(t=>t.id);
+  if(shuffle) queue = shuffleArray(queue);
+
+  for(const t of tracks){
+    const el = document.createElement('div'); el.className='track';
+    const meta = document.createElement('div'); meta.className='meta';
+    const title = document.createElement('div'); title.className='title'; title.textContent = '🎵 ' + t.name;
+    const small = document.createElement('div'); small.className='small'; small.textContent = `${Math.round(t.size/1024)} KB • Thêm: ${new Date(t.addedAt).toLocaleString()}`;
+    meta.appendChild(title); meta.appendChild(small);
+
+    const actions = document.createElement('div'); actions.className='actions';
+    const play = document.createElement('button'); play.className='btn'; play.textContent='▶️ Phát';
+    const del = document.createElement('button'); del.className='btn'; del.textContent='🗑️';
+    const addQueue = document.createElement('button'); addQueue.className='btn'; addQueue.textContent='➕ Thêm vào hàng';
+    actions.appendChild(play); actions.appendChild(addQueue); actions.appendChild(del);
+
+    play.addEventListener('click', ()=> playById(t.id));
+    addQueue.addEventListener('click', ()=>{
+      queue.push(t.id);
+      alert('Đã thêm vào hàng phát (queue).');
+    });
+    del.addEventListener('click', async ()=>{
+      if(confirm(`Xóa "${t.name}" khỏi playlist?`)){
+        await deleteOne(t.id);
+        if(currentTrackId() === t.id) stopAndReset();
+        await render();
       }
     });
-  </script>
 
-</body>
-</html>
+    el.appendChild(meta); el.appendChild(actions);
+    tracksEl.appendChild(el);
+  }
+  playerBar.style.display = 'flex';
+  updatePlayerUI();
+}
+
+/* helper: current track id */
+function currentTrackId(){ return queue[currentIndex] ?? null }
+
+/* play track by DB id */
+async function playById(id){
+  // ensure queue positions include this id
+  if(!queue.includes(id)) queue.push(id);
+  currentIndex = queue.indexOf(id);
+  const t = (await getAll()).find(x=>x.id===id);
+  if(!t) return;
+  const blob = t.blob;
+  const url = URL.createObjectURL(blob);
+  audio.src = url;
+  audio.play().catch(()=>{/* iOS requires gesture */});
+  nowTitle.textContent = t.name;
+  nowArtist.textContent = '📁 local';
+  playBtn.textContent = '⏸ Paused';
+  downloadTrack.onclick = ()=> downloadBlob(blob, t.name);
+}
+
+/* play/pause toggle */
+playBtn.addEventListener('click', ()=> {
+  if(audio.paused) { audio.play(); playBtn.textContent='⏸ Paused' }
+  else { audio.pause(); playBtn.textContent='▶️' }
+});
+
+/* prev/next */
+prevBtn.addEventListener('click', ()=> {
+  if(currentIndex>0) currentIndex--;
+  else currentIndex = (repeatMode===1 ? queue.length-1 : 0);
+  const id = currentTrackId();
+  if(id) playById(id);
+});
+nextBtn.addEventListener('click', ()=> nextTrack());
+
+function nextTrack(){
+  if(repeatMode===2){ // repeat one
+    playById(currentTrackId());
+    return;
+  }
+  if(currentIndex < queue.length -1) currentIndex++;
+  else {
+    if(repeatMode===1) currentIndex = 0;
+    else { audio.pause(); audio.currentTime = 0; return; }
+  }
+  const id = currentTrackId();
+  if(id) playById(id);
+}
+
+/* shuffle toggle */
+shuffleBtn.addEventListener('click', ()=>{
+  shuffle = !shuffle;
+  shuffleBtn.textContent = shuffle ? '🔀 Shuffle: ON' : '🔀 Shuffle';
+  // rebuild queue keeping current track first
+  const cur = currentTrackId();
+  const ids = tracks.map(t=>t.id);
+  queue = shuffle ? shuffleArray(ids) : ids;
+  if(cur){ queue = [cur, ...queue.filter(x=>x!==cur)]; currentIndex = 0; }
+});
+
+/* repeat toggle */
+repeatBtn.addEventListener('click', ()=>{
+  repeatMode = (repeatMode + 1) % 3;
+  const labels = ['🔁 Repeat: OFF','🔁 Repeat All','🔂 Repeat One'];
+  repeatBtn.textContent = labels[repeatMode];
+});
+
+/* audio events: update seek/time, ended */
+audio.addEventListener('timeupdate', ()=>{
+  if(audio.duration && !isNaN(audio.duration)){
+    const p = Math.floor((audio.curr
