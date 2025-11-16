@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <!-- iOS support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAA..." />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>yuungplaylist — Offline MP4 Player</title>
+  <meta name="description" content="Yuungplaylist: nghe các file MP4 (nhạc) offline, lưu vào trình duyệt." />
+  <style>
+    :root{--bg:#0f1724;--card:#0b1220;--accent:#ff6b6b;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071027 0%, #081022 100%);color:#e6eef8}
+    .container{max-width:960px;margin:28px auto;padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;box-shadow:0 6px 30px rgba(2,6,23,0.6)}
+    h1{margin:0 0 6px;font-size:28px;color:var(--accent)}
+    p.lead{margin:0 0 18px;color:var(--muted)}
+    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .btn{background:var(--card);border:1px solid rgba(255,255,255,0.03);padding:10px 14px;border-radius:10px;cursor:pointer}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),#ff8b8b);color:#071022;font-weight:600}
+    .drop{margin-top:14px;padding:18px;border-radius:12px;border:2px dashed rgba(255,255,255,0.04);background:var(--glass);text-align:center}
+    .files{margin-top:20px;display:grid;gap:10px}
+    .track{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,0.012)}
+    .track .meta{flex:1}
+    .small{font-size:13px;color:var(--muted)}
+    .actions{display:flex;gap:8px}
+    .note{margin-top:12px;color:var(--muted);font-size:13px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px}
+    .install{margin-left:auto}
+    audio,video{max-width:320px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header style="display:flex;align-items:center;gap:12px">
+      <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect rx='10' width='48' height='48' fill='%23ff6b6b'/><text x='50%' y='57%' font-size='24' fill='white' text-anchor='middle' font-family='Arial'>Y</text></svg>" alt="logo" style="width:48px;height:48px;border-radius:10px">
+      <div>
+        <h1>yuungplaylist</h1>
+        <p class="lead">Nghe file MP4 (nhạc) offline — thêm file từ máy, lưu vào trình duyệt và phát mà không cần mạng.</p>
+      </div>
+      <button id="installBtn" class="btn primary install" style="display:none">Cài làm app</button>
+    </header>
+
+    <section style="margin-top:12px">
+      <div class="controls">
+        <label class="btn" for="fileInput">Thêm file MP4</label>
+        <input id="fileInput" type="file" accept="video/mp4,video/*,audio/*" multiple style="display:none">
+        <button id="importBtn" class="btn">Nhập từ thư mục (kéo-thả)</button>
+        <button id="clearAll" class="btn">Xóa tất cả</button>
+        <div class="note">Trình duyệt lưu file cục bộ (IndexedDB). Dung lượng tùy theo trình duyệt.</div>
+      </div>
+
+      <div id="dropZone" class="drop">Kéo & thả file MP4 vào đây hoặc bấm <strong>Thêm file MP4</strong></div>
+
+      <div id="tracks" class="files"></div>
+
+      <p class="note">Gợi ý: dùng Chrome/Edge/Firefox mới nhất để có trải nghiệm offline tốt. Nếu muốn cài app PWA: bấm 'Cài làm app' (nếu xuất hiện).</p>
+    </section>
+
+    <footer>© yuungplaylist — offline player</footer>
+  </div>
+
+  <script>
+  // -------------------- IndexedDB helpers --------------------
+  const DB_NAME = 'yuungplaylist_db';
+  const STORE = 'tracks';
+  function openDB(){
+    return new Promise((res,rej)=>{
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if(!db.objectStoreNames.contains(STORE)){
+          const store = db.createObjectStore(STORE, { keyPath: 'id', autoIncrement: true});
+          store.createIndex('name', 'name', {unique:false});
+        }
+      }
+      req.onsuccess = ()=>res(req.result);
+      req.onerror = ()=>rej(req.error);
+    })
+  }
+  function addTrack(file){
+    return openDB().then(db=> new Promise((res,rej)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      const store = tx.objectStore(STORE);
+      const item = {name: file.name, blob: file, size: file.size, addedAt: Date.now()};
+      const r = store.add(item);
+      r.onsuccess = ()=>{db.close(); res(r.result)};
+      r.onerror = ()=>{db.close(); rej(r.error)};
+    }))
+  }
+  function getAllTracks(){
+    return openDB().then(db=> new Promise((res,rej)=>{
+      const tx = db.transaction(STORE,'readonly');
+      const store = tx.objectStore(STORE); const all = store.getAll();
+      all.onsuccess = ()=>{db.close(); res(all.result)};
+      all.onerror = ()=>{db.close(); rej(all.error)};
+    }))
+  }
+  function deleteTrack(id){
+    return openDB().then(db=> new Promise((res,rej)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      const store = tx.objectStore(STORE);
+      const r = store.delete(id);
+      r.onsuccess = ()=>{db.close(); res()}; r.onerror = ()=>{db.close(); rej(r.error)};
+    }))
+  }
+  function clearAll(){
+    return openDB().then(db=> new Promise((res,rej)=>{
+      const tx = db.transaction(STORE,'readwrite');
+      const r = tx.objectStore(STORE).clear();
+      r.onsuccess = ()=>{db.close(); res()}; r.onerror = ()=>{db.close(); rej(r.error)};
+    }))
+  }
+  // -------------------- UI + logic --------------------
+  const fileInput = document.getElementById('fileInput');
+  const dropZone = document.getElementById('dropZone');
+  const tracksEl = document.getElementById('tracks');
+  const clearBtn = document.getElementById('clearAll');
+  const installBtn = document.getElementById('installBtn');
+
+  async function render(){
+    tracksEl.innerHTML = '';
+    const tracks = await getAllTracks();
+    if(!tracks.length){ tracksEl.innerHTML = '<div class="small">Chưa có file nào — thêm file bằng nút hoặc kéo thả.</div>'; return }
+    for(const t of tracks){
+      const wrap = document.createElement('div'); wrap.className='track';
+      const meta = document.createElement('div'); meta.className='meta';
+      const title = document.createElement('div'); title.textContent = t.name; title.style.fontWeight='600';
+      const small = document.createElement('div'); small.className='small'; small.textContent = `Kích thước: ${Math.round(t.size/1024)} KB • Thêm: ${new Date(t.addedAt).toLocaleString()}`;
+      meta.appendChild(title); meta.appendChild(small);
+
+      const mediaWrap = document.createElement('div');
+      // play button and audio/video element created on demand
+      const playBtn = document.createElement('button'); playBtn.className='btn'; playBtn.textContent='Phát';
+      const delBtn = document.createElement('button'); delBtn.className='btn'; delBtn.textContent='Xóa';
+      const actions = document.createElement('div'); actions.className='actions'; actions.appendChild(playBtn); actions.appendChild(delBtn);
+
+      let mediaEl = null;
+      let objectUrl = null;
+
+      playBtn.addEventListener('click', async ()=>{
+        if(!mediaEl){
+          // create objectURL from blob
+          objectUrl = URL.createObjectURL(t.blob);
+          mediaEl = document.createElement('video');
+          mediaEl.controls = true; mediaEl.preload = 'metadata'; mediaEl.style.maxWidth='360px';
+          mediaEl.src = objectUrl; mediaEl.setAttribute('playsinline','');
+          mediaWrap.appendChild(mediaEl);
+        }
+        if(mediaEl.paused) { mediaEl.play(); playBtn.textContent='Tạm dừng' }
+        else { mediaEl.pause(); playBtn.textContent='Phát' }
+      })
+
+      delBtn.addEventListener('click', async ()=>{
+        if(confirm(`Xóa "${t.name}" khỏi playlist?`)){
+          await deleteTrack(t.id);
+          if(objectUrl) URL.revokeObjectURL(objectUrl);
+          render();
+        }
+      })
+
+      wrap.appendChild(meta);
+      wrap.appendChild(actions);
+      wrap.appendChild(mediaWrap);
+      tracksEl.appendChild(wrap);
+    }
+  }
+
+  fileInput.addEventListener('change', async e=>{
+    const files = Array.from(e.target.files || []);
+    for(const f of files) await addTrack(f);
+    fileInput.value='';
+    render();
+  })
+
+  dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.style.borderColor='rgba(255,255,255,0.12)'});
+  dropZone.addEventListener('dragleave', e=>{ dropZone.style.borderColor='' });
+  dropZone.addEventListener('drop', async e=>{
+    e.preventDefault(); dropZone.style.borderColor='';
+    const items = Array.from(e.dataTransfer.files || []);
+    for(const it of items) await addTrack(it);
+    render();
+  })
+
+  clearBtn.addEventListener('click', async ()=>{
+    if(confirm('Xóa toàn bộ file đã lưu?')){ await clearAll(); render(); }
+  })
+
+  document.getElementById('importBtn').addEventListener('click', ()=> alert('Kéo & thả thư mục/file vào vùng "Kéo & thả file" để thêm.'));
+
+  // PWA: generate a minimal manifest and register a service worker (from blob) so app shell is cached.
+  const manifest = {
+    name: 'yuungplaylist', short_name: 'yuung', start_url: '.', display: 'standalone', background_color: '#071027', theme_color: '#ff6b6b'
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const manifestURL = URL.createObjectURL(manifestBlob);
+  const link = document.createElement('link'); link.rel='manifest'; link.href = manifestURL; document.head.appendChild(link);
+
+  // create service worker source as a blob so we don't need extra files
+  const swSource = `
+    const CACHE_NAME = 'yuungplaylist-shell-v1';
+    const ASSETS = ['.'];
+    self.addEventListener('install', event => {
+      self.skipWaiting();
+      event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+    });
+    self.addEventListener('activate', event => { event.waitUntil(self.clients.claim()); });
+    self.addEventListener('fetch', event => {
+      // network-first for simple resources, fallback to cache
+      event.respondWith(fetch(event.request).catch(()=>caches.match(event.request)));
+    });
+  `;
+
+  if('serviceWorker' in navigator){
+    const swBlob = new Blob([swSource], {type:'text/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).then(()=>console.log('SW registered')).catch(()=>console.log('SW failed'));
+  }
+
+  // prompt for install (capture beforeinstallprompt)
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e)=>{
+    e.preventDefault(); deferredPrompt = e; installBtn.style.display='inline-block';
+  });
+  installBtn.addEventListener('click', async ()=>{
+    if(deferredPrompt){ deferredPrompt.prompt(); const choice = await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display='none'; }
+  });
+
+  // initial render
+  render();
+
+  // show simple usage tip if storage is unavailable
+  try{ await navigator.storage.persisted?.(); } catch(e){}
+  </script>
+</body>
+</html>
