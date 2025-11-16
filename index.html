@@ -1,127 +1,158 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Yuung Offline Player – Simple</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yuung Playlist — GitHub-ready</title>
 <style>
-  body { font-family: sans-serif; background:#e6f9ff; margin:0; padding:20px; }
-  h1 { margin:0 0 10px 0; }
-  #list { margin-top:20px; }
-  .item { background:white; padding:10px; margin-bottom:8px; border-radius:8px; }
-  .controls button { margin-right:10px; }
-  .now { margin-top:20px; padding:10px; background:white; border-radius:8px; }
+  :root{--bg:#e6f9ff;--accent:#0b7fa8}
+  body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;background:linear-gradient(180deg,var(--bg),#dff6fb);color:#053b4a;padding:16px}
+  .wrap{max-width:980px;margin:0 auto}
+  header{display:flex;gap:12px;align-items:center}
+  .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#38c1e0);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
+  h1{margin:0;font-size:18px}
+  .controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .btn{padding:8px 10px;border-radius:10px;border:0;background:white;cursor:pointer;box-shadow:0 6px 18px rgba(11,127,168,0.06)}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),#2bb1d1);color:white}
+  .drop{margin-top:12px;padding:12px;border-radius:12px;border:2px dashed rgba(11,127,168,0.1);text-align:center;background:rgba(255,255,255,0.6)}
+  .tracks{margin-top:12px}
+  .track{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:white;margin-bottom:8px}
+  .player{position:sticky;bottom:12px;background:white;padding:12px;border-radius:12px;margin-top:12px;box-shadow:0 8px 24px rgba(11,127,168,0.06)}
+  .emoji{margin-right:6px}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <header>
+    <div class="logo">🎧</div>
+    <div>
+      <h1>Yuung Playlist — GitHub-ready</h1>
+      <div class="small">Nghe offline trong tab · Export/Import để chuyển giữa thiết bị</div>
+    </div>
+  </header>
 
-<h1>🎧 Yuung Offline Player (Simple Version)</h1>
-<p>Phiên bản chạy 100% trên PC — chỉ cần mở file là dùng được.</p>
-
-<input type="file" id="files" accept="audio/*" multiple>
-<button id="shuffleBtn">🔀 Shuffle</button>
-
-<div id="list"></div>
-
-<div class="now">
-  <b>Đang phát:</b> <span id="nowTitle">—</span><br>
   <div class="controls">
-    <button id="prevBtn">⏮ Prev</button>
-    <button id="playBtn">▶️ Play</button>
-    <button id="nextBtn">⏭ Next</button>
+    <label class="btn">➕ Thêm file<input id="fileIn" type="file" accept="audio/*" multiple style="display:none"></label>
+    <button id="shuffle" class="btn">🔀 Shuffle</button>
+    <button id="export" class="btn">📤 Export</button>
+    <button id="import" class="btn">📥 Import</button>
+    <button id="clear" class="btn">🗑️ Clear</button>
   </div>
-  <input id="seek" type="range" min="0" max="100" value="0" style="width:250px;">
+
+  <div id="drop" class="drop">Kéo & thả file vào đây để thêm nhiều bài (hoặc bấm "Thêm file")</div>
+  <div id="tracks" class="tracks"></div>
+
+  <div class="player" id="player" style="display:none">
+    <div><b id="nowTitle">—</b></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+      <button id="prev" class="btn">⏮</button>
+      <button id="play" class="btn primary">▶️</button>
+      <button id="next" class="btn">⏭</button>
+      <input id="seek" type="range" min="0" max="100" value="0" style="margin-left:12px;flex:1">
+      <div id="time" style="min-width:110px;text-align:right">0:00 / 0:00</div>
+    </div>
+  </div>
 </div>
 
 <script>
-let audio = new Audio();
-let tracks = [];
-let queue = [];
-let currentIndex = -1;
-let shuffle = false;
+/* In-memory playlist model — safe on GitHub Pages */
+let tracks = []; // {id, name, file, url}
+let queue = []; let idx = -1; let shuffleMode = false;
+const fileIn = document.getElementById('fileIn'), drop = document.getElementById('drop'), tracksEl = document.getElementById('tracks');
+const playBtn = document.getElementById('play'), prevBtn = document.getElementById('prev'), nextBtn = document.getElementById('next');
+const player = document.getElementById('player'), nowTitle = document.getElementById('nowTitle'), seek = document.getElementById('seek'), timeLabel = document.getElementById('time');
 
-function formatTime(t){
-  const m = Math.floor(t / 60);
-  const s = Math.floor(t % 60).toString().padStart(2,'0');
-  return `${m}:${s}`;
-}
-
-document.getElementById("files").addEventListener("change", (e) => {
-  const files = [...e.target.files];
-  tracks = files.map((f, i) => ({ id:i, file:f, url:URL.createObjectURL(f) }));
-  queue = tracks.map(t => t.id);
-  renderList();
-});
-
-function renderList(){
-  const list = document.getElementById("list");
-  list.innerHTML = "";
-  tracks.forEach(t => {
-    const div = document.createElement("div");
-    div.className = "item";
-    div.textContent = "🎵 " + t.file.name;
-    div.onclick = () => playById(t.id);
-    list.appendChild(div);
+function addFiles(files){
+  const baseId = tracks.length? tracks[tracks.length-1].id + 1 : 1;
+  Array.from(files).forEach((f,i)=>{
+    const id = baseId + i;
+    const url = URL.createObjectURL(f);
+    tracks.push({id,name:f.name,file:f,url});
   });
+  queue = tracks.map(t=>t.id);
+  if(shuffleMode) queue = shuffleArray(queue);
+  renderTracks();
 }
 
-function playById(id){
-  currentIndex = queue.indexOf(id);
-  const t = tracks.find(x => x.id === id);
-  if(!t) return;
-  audio.src = t.url;
-  audio.play();
-  document.getElementById("nowTitle").textContent = t.file.name;
-  document.getElementById("playBtn").textContent = "⏸ Pause";
+/* UI events */
+fileIn.addEventListener('change', e=>{ addFiles(e.target.files); fileIn.value=''; });
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor='#0b7fa8'; });
+drop.addEventListener('dragleave', e=>{ drop.style.borderColor=''; });
+drop.addEventListener('drop', e=>{ e.preventDefault(); drop.style.borderColor=''; addFiles(e.dataTransfer.files); });
+
+function renderTracks(){
+  tracksEl.innerHTML = '';
+  if(tracks.length===0){ tracksEl.innerHTML = '<div class="track">Chưa có bài nào — thêm file để bắt đầu.</div>'; player.style.display='none'; return; }
+  tracks.forEach(t=>{
+    const el = document.createElement('div'); el.className='track';
+    el.innerHTML = '<div>🎵 <strong>'+escapeHtml(t.name)+'</strong></div>';
+    const actions = document.createElement('div');
+    const play = document.createElement('button'); play.className='btn'; play.textContent='▶️ Phát';
+    const remove = document.createElement('button'); remove.className='btn'; remove.textContent='🗑️';
+    actions.appendChild(play); actions.appendChild(remove); el.appendChild(actions);
+    play.onclick = ()=> playById(t.id);
+    remove.onclick = ()=> { tracks = tracks.filter(x=>x.id!==t.id); queue = tracks.map(x=>x.id); if(idx>=tracks.length) idx = tracks.length-1; renderTracks(); };
+    tracksEl.appendChild(el);
+  });
+  player.style.display='block';
 }
 
-document.getElementById("playBtn").onclick = () => {
-  if(audio.paused){ audio.play(); document.getElementById("playBtn").textContent="⏸ Pause"; }
-  else { audio.pause(); document.getElementById("playBtn").textContent="▶️ Play"; }
-};
+/* play controls */
+const audio = new Audio(); audio.setAttribute('playsinline','');
+function playById(id){ idx = queue.indexOf(id); const t = tracks.find(x=>x.id===id); if(!t) return; audio.src = t.url; audio.play(); nowTitle.textContent = t.name; playBtn.textContent='⏸ Pause'; }
+playBtn.addEventListener('click', ()=> {
+  if(!audio.src){ if(tracks.length) playById(queue[0]); return; }
+  if(audio.paused){ audio.play(); playBtn.textContent='⏸ Pause'; } else { audio.pause(); playBtn.textContent='▶️'; }
+});
+prevBtn.addEventListener('click', ()=> { if(idx>0) idx--; playById(queue[idx]); });
+nextBtn.addEventListener('click', ()=> { if(idx < queue.length-1) idx++; else { idx = -1; audio.pause(); audio.currentTime=0; return; } playById(queue[idx]); });
 
-document.getElementById("nextBtn").onclick = () => {
-  if(currentIndex < queue.length - 1) currentIndex++;
-  playById(queue[currentIndex]);
-};
+audio.addEventListener('timeupdate', ()=>{ if(audio.duration){ seek.value = (audio.currentTime/audio.duration)*100; timeLabel.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration); }});
+seek.addEventListener('input', e=>{ if(audio.duration) audio.currentTime = (e.target.value/100)*audio.duration; });
+audio.addEventListener('ended', ()=> { if(idx < queue.length-1){ idx++; playById(queue[idx]); } else { audio.pause(); playBtn.textContent='▶️'; }});
 
-document.getElementById("prevBtn").onclick = () => {
-  if(currentIndex > 0) currentIndex--;
-  playById(queue[currentIndex]);
-};
-
-audio.addEventListener("timeupdate", () => {
-  if(audio.duration){
-    document.getElementById("seek").value = (audio.currentTime / audio.duration) * 100;
-  }
+/* shuffle toggle */
+document.getElementById('shuffle').addEventListener('click', ()=> {
+  shuffleMode = !shuffleMode;
+  queue = shuffleMode ? shuffleArray(tracks.map(t=>t.id)) : tracks.map(t=>t.id);
+  document.getElementById('shuffle').textContent = shuffleMode ? '🔀 ON' : '🔀 Shuffle';
 });
 
-document.getElementById("seek").oninput = (e) => {
-  if(audio.duration){
-    audio.currentTime = (e.target.value / 100) * audio.duration;
+/* export/import */
+document.getElementById('export').addEventListener('click', async ()=>{
+  if(tracks.length===0){ alert('Không có bài để export'); return; }
+  const payload = {createdAt:Date.now(), version:1, tracks:[]};
+  for(const t of tracks){
+    const base = await blobToBase64(t.file);
+    payload.tracks.push({name:t.name,type:t.file.type,base});
   }
-};
+  const blob = new Blob([JSON.stringify(payload)],{type:'application/json'});
+  const fname = `yuung_export_${new Date().toISOString().slice(0,10)}.yuung.json`;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+});
+document.getElementById('import').addEventListener('click', ()=> {
+  const fi = document.createElement('input'); fi.type='file'; fi.accept='.json,.yuung.json,application/json'; fi.onchange = async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const text = await f.text(); try{
+      const p = JSON.parse(text);
+      if(!p.tracks) throw 'invalid';
+      for(const item of p.tracks){
+        const b = base64ToBlob(item.base, item.type);
+        addFiles([new File([b], item.name, {type:item.type})]);
+      }
+      alert('Import xong');
+    }catch(err){ alert('Import lỗi'); }
+  }; fi.click();
+});
 
-document.getElementById("shuffleBtn").onclick = () => {
-  shuffle = !shuffle;
-  if(shuffle){
-    queue = shuffleArray(tracks.map(t=>t.id));
-    document.getElementById("shuffleBtn").textContent = "🔀 Shuffle ON";
-  } else {
-    queue = tracks.map(t=>t.id);
-    document.getElementById("shuffleBtn").textContent = "🔀 Shuffle";
-  }
-};
+/* clear */
+document.getElementById('clear').addEventListener('click', ()=> { if(confirm('Xóa toàn bộ playlist?')){ tracks=[]; queue=[]; idx=-1; audio.pause(); audio.src=''; renderTracks(); }});
 
-function shuffleArray(a){
-  const arr = [...a];
-  for(let i=arr.length-1;i>0;i--){
-    const j = Math.random()* (i+1) | 0;
-    [arr[i],arr[j]]=[arr[j],arr[i]];
-  }
-  return arr;
-}
+/* utils */
+function shuffleArray(a){ const arr = [...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function formatTime(s){ if(!s) return '0:00'; const m=Math.floor(s/60); const sec=Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`; }
+function blobToBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(file); }); }
+function base64ToBlob(b64, type){ const bin = atob(b64); let len = bin.length; const u8 = new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8], {type:type||'audio'}); }
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 </script>
-
 </body>
 </html>
