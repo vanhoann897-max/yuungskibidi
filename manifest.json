@@ -1,0 +1,27 @@
+// sw.js — place at root of site
+const CACHE_NAME = 'yuung-site-v1';
+const OFFLINE_URL = '/';
+const ASSETS_TO_CACHE = [
+  OFFLINE_URL,
+  // add any static assets you host (icons, css) if you want:
+  // '/index.html', '/styles.css'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return cached || fetch(event.request).catch(() => caches.match(OFFLINE_URL));
+    })
+  );
+});
