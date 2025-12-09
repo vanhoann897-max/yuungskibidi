@@ -1,10 +1,12 @@
 {
-  "name": "Yuung Player",
-  "short_name": "YuungPlayer",
-  "start_url": "/",
+  "name": "Yuung",
+  "short_name": "Yuung",
+  "start_url": "/yuungskibidi/",
+  "scope": "/yuungskibidi/",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#ff4d6d",
+  "description": "Offline Music Player with Playlist, Thumbnail & Dark Mode",
   "icons": [
     {
       "src": "icon-192.png",
