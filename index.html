@@ -11,6 +11,49 @@
 
 <style>
   /* ============================
+   DARK MODE – CHỮ TRẮNG FULL
+   ============================ */
+.dark-mode {
+    --bg-color: #0e0e0e;
+    --text-color: #ffffff;
+}
+
+.dark-mode body,
+.dark-mode * {
+    color: var(--text-color) !important;
+}
+
+/* Nền container + card */
+.dark-mode .container,
+.dark-mode .music-item,
+.dark-mode .music-card,
+.dark-mode .playlist {
+    background: #1a1a1a !important;
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* Tiêu đề */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3 {
+    color: #fff !important;
+}
+
+/* Input + button */
+.dark-mode input,
+.dark-mode button {
+    background: #2a2a2a !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,0.2) !important;
+}
+
+/* Player */
+.dark-mode .player-controls,
+.dark-mode #title {
+    color: #fff !important;
+}
+
+  /* ============================
      THEME & LAYOUT
      ============================ */
   :root{
@@ -216,7 +259,15 @@
 </div>
 
 <script>
-/* ===================================================
+function toggleDarkMode() {
+    document.documentElement.classList.toggle("dark-mode");
+    localStorage.setItem("darkMode", document.documentElement.classList.contains("dark-mode") ? "1" : "0");
+}
+// Tự bật dark mode nếu lần trước bật
+if (localStorage.getItem("darkMode") === "1") {
+    document.documentElement.classList.add("dark-mode");
+}
+  /* ===================================================
    FULL APP SCRIPT
    - Features:
      · Add / Drop files
