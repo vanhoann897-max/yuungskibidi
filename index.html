@@ -1,48 +1,92 @@
 <!doctype html>
 <html lang="vi">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Yuung Playlist — GitHub-ready</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Yuung Playlist — PWA + Dark Mode (Metadata-save)</title>
+<meta name="theme-color" content="#0b7fa8" id="metaThemeColor">
+
+<!-- jsmediatags (để đọc ID3 cover nếu có) -->
+<script src="https://unpkg.com/jsmediatags@3.9.5/dist/jsmediatags.min.js"></script>
+
 <style>
-  :root{--bg:#e6f9ff;--accent:#0b7fa8}
-  body{font-family:system-ui,Segoe UI,Roboto,Arial;margin:0;background:linear-gradient(180deg,var(--bg),#dff6fb);color:#053b4a;padding:16px}
+  :root{
+    --bg:#e6f9ff; --accent:#0b7fa8; --card:#ffffff; --text:#053b4a;
+  }
+  [data-theme="dark"]{
+    --bg:#04121a; --accent:#09a3c6; --card:#071722; --text:#cfeefb;
+  }
+
+  html,body{height:100%;margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;-webkit-font-smoothing:antialiased}
+  body{background:linear-gradient(180deg,var(--bg),#dff6fb);color:var(--text);padding:16px}
   .wrap{max-width:980px;margin:0 auto}
   header{display:flex;gap:12px;align-items:center}
   .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#38c1e0);display:flex;align-items:center;justify-content:center;color:white;font-weight:700}
   h1{margin:0;font-size:18px}
+  .small{opacity:0.9;font-size:13px}
   .controls{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .btn{padding:8px 10px;border-radius:10px;border:0;background:white;cursor:pointer;box-shadow:0 6px 18px rgba(11,127,168,0.06)}
+  .btn{padding:10px 14px;border-radius:10px;border:0;background:var(--card);cursor:pointer;box-shadow:0 6px 18px rgba(11,127,168,0.06);font-size:15px;color:var(--text)}
   .btn.primary{background:linear-gradient(90deg,var(--accent),#2bb1d1);color:white}
-  .drop{margin-top:12px;padding:12px;border-radius:12px;border:2px dashed rgba(11,127,168,0.1);text-align:center;background:rgba(255,255,255,0.6)}
+  .drop{margin-top:12px;padding:12px;border-radius:12px;border:2px dashed rgba(11,127,168,0.12);text-align:center;background:rgba(255,255,255,0.6)}
+  [data-theme="dark"] .drop{background:rgba(255,255,255,0.02);border-color:rgba(9,163,198,0.12)}
   .tracks{margin-top:12px}
-  .track{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:white;margin-bottom:8px}
-  .player{position:sticky;bottom:12px;background:white;padding:12px;border-radius:12px;margin-top:12px;box-shadow:0 8px 24px rgba(11,127,168,0.06)}
-  .emoji{margin-right:6px}
+  .track{display:flex;gap:12px;align-items:center;padding:8px;border-radius:8px;background:var(--card);margin-bottom:8px}
+  .cover{width:56px;height:56px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,#eee,#ddd);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;overflow:hidden}
+  .track-info{flex:1;min-width:0}
+  .track-actions{display:flex;gap:6px}
+  .player{position:sticky;bottom:12px;background:var(--card);padding:12px;border-radius:12px;margin-top:12px;box-shadow:0 8px 24px rgba(11,127,168,0.06)}
+  .small-muted{opacity:0.8;font-size:13px}
+  .cover-input{display:none}
+  .install-btn{display:none}
+  .modes{display:flex;gap:6px}
+  @media (max-width:520px){
+    .btn{padding:9px 10px;font-size:14px}
+    .logo{width:48px;height:48px}
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <div class="logo">🎧</div>
-    <div>
-      <h1>Yuung Playlist — GitHub-ready</h1>
-      <div class="small">Nghe offline trong tab · Export/Import để chuyển giữa thiết bị</div>
+    <div style="flex:1">
+      <h1>Yuung Playlist — PWA & Dark Mode</h1>
+      <div class="small">Lưu *metadata* vào localStorage · Export/Import để di chuyển file đầy đủ</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+      <button id="themeToggle" class="btn">🌙 Dark</button>
+      <button id="installBtn" class="btn install-btn">📲 Install</button>
     </div>
   </header>
 
   <div class="controls">
-    <label class="btn">➕ Thêm file<input id="fileIn" type="file" accept="audio/*" multiple style="display:none"></label>
-    <button id="shuffle" class="btn">🔀 Shuffle</button>
-    <button id="export" class="btn">📤 Export</button>
+    <label id="iosPickerBtn" class="btn">➕ Thêm file
+      <input id="fileIn" type="file"
+        accept=".mp3, audio/mpeg, audio/mp4, audio/wav, audio/x-wav, audio/x-m4a, audio/aac"
+        multiple style="display:none">
+    </label>
+
+    <div class="modes">
+      <button id="shuffle" class="btn">🔀 Shuffle</button>
+      <button id="repeat" class="btn">🔁 Repeat: Off</button>
+    </div>
+
+    <button id="export" class="btn">📤 Export (bao gồm base64)</button>
     <button id="import" class="btn">📥 Import</button>
+    <button id="downloadAll" class="btn">⬇️ Download all (zip)</button>
     <button id="clear" class="btn">🗑️ Clear</button>
   </div>
 
   <div id="drop" class="drop">Kéo & thả file vào đây để thêm nhiều bài (hoặc bấm "Thêm file")</div>
+
   <div id="tracks" class="tracks"></div>
 
   <div class="player" id="player" style="display:none">
-    <div><b id="nowTitle">—</b></div>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div><b id="nowTitle">—</b></div>
+      <div class="small-muted" id="nowCount">0 / 0</div>
+    </div>
+
     <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
       <button id="prev" class="btn">⏮</button>
       <button id="play" class="btn primary">▶️</button>
@@ -54,105 +98,495 @@
 </div>
 
 <script>
-/* In-memory playlist model — safe on GitHub Pages */
-let tracks = []; // {id, name, file, url}
-let queue = []; let idx = -1; let shuffleMode = false;
-const fileIn = document.getElementById('fileIn'), drop = document.getElementById('drop'), tracksEl = document.getElementById('tracks');
-const playBtn = document.getElementById('play'), prevBtn = document.getElementById('prev'), nextBtn = document.getElementById('next');
-const player = document.getElementById('player'), nowTitle = document.getElementById('nowTitle'), seek = document.getElementById('seek'), timeLabel = document.getElementById('time');
+/* -------------------------
+   CONFIG
+   ------------------------- */
+const STORAGE_KEY = 'yuung_playlist_metadata_v1'; // lưu **chỉ metadata**
+let tracks = []; // {id, name, size, type, coverBase64 (optional), notes}
+let runtimeFiles = new Map(); // id -> { file:File, url:ObjectURL } (không lưu persistent)
+let queue = [];
+let idx = -1;
+let shuffleMode = false, repeatMode = 'off'; // 'off','one','all'
 
-function addFiles(files){
-  const baseId = tracks.length? tracks[tracks.length-1].id + 1 : 1;
-  Array.from(files).forEach((f,i)=>{
-    const id = baseId + i;
+/* -------------------------
+   DOM refs
+   ------------------------- */
+const fileIn = document.getElementById('fileIn');
+const drop = document.getElementById('drop');
+const tracksEl = document.getElementById('tracks');
+const playBtn = document.getElementById('play');
+const prevBtn = document.getElementById('prev');
+const nextBtn = document.getElementById('next');
+const player = document.getElementById('player');
+const nowTitle = document.getElementById('nowTitle');
+const nowCount = document.getElementById('nowCount');
+const seek = document.getElementById('seek');
+const timeLabel = document.getElementById('time');
+const shuffleBtn = document.getElementById('shuffle');
+const repeatBtn = document.getElementById('repeat');
+const exportBtn = document.getElementById('export');
+const importBtn = document.getElementById('import');
+const downloadAllBtn = document.getElementById('downloadAll');
+const clearBtn = document.getElementById('clear');
+const themeToggle = document.getElementById('themeToggle');
+const installBtn = document.getElementById('installBtn');
+
+/* -------------------------
+   THEME
+   ------------------------- */
+function loadTheme(){
+  const t = localStorage.getItem('yuung_theme') || 'light';
+  if(t==='dark') document.documentElement.setAttribute('data-theme','dark');
+  updateThemeBtn();
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'dark' : 'light';
+  const next = cur==='dark' ? 'light' : 'dark';
+  if(next==='dark') document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+  localStorage.setItem('yuung_theme', next);
+  updateThemeBtn();
+}
+function updateThemeBtn(){
+  const isDark = document.documentElement.getAttribute('data-theme')==='dark';
+  themeToggle.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+  document.getElementById('metaThemeColor').setAttribute('content', isDark ? '#071722' : '#0b7fa8');
+}
+themeToggle.addEventListener('click', toggleTheme);
+loadTheme();
+
+/* -------------------------
+   AUDIO
+   ------------------------- */
+const audio = new Audio();
+audio.setAttribute('playsinline','');
+function formatTime(s){
+  if(!s && s!==0) return '0:00';
+  const m=Math.floor(s/60), sec=Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+audio.addEventListener('timeupdate', ()=>{
+  if(audio.duration){
+    seek.value = (audio.currentTime/audio.duration)*100;
+    timeLabel.textContent = `${formatTime(audio.currentTime)} / ${formatTime(audio.duration)}`;
+  }
+});
+seek.addEventListener('input', e=>{
+  if(audio.duration) audio.currentTime = (e.target.value/100)*audio.duration;
+});
+audio.addEventListener('ended', ()=>{
+  if(repeatMode==='one'){ audio.currentTime=0; audio.play(); return; }
+  if(idx < queue.length-1){
+    idx++;
+    playById(queue[idx]);
+  } else {
+    if(repeatMode==='all'){ idx=0; playById(queue[idx]); }
+    else { audio.pause(); playBtn.textContent='▶️'; }
+  }
+});
+
+/* -------------------------
+   Playback controls
+   ------------------------- */
+function playById(id){
+  idx = queue.indexOf(id);
+  const md = tracks.find(t=>t.id===id);
+  if(!md) return;
+  const rf = runtimeFiles.get(id);
+  if(!rf){
+    alert('File chỉ được lưu metadata — bạn cần thêm file lại (import / thêm file) để phát.');
+    return;
+  }
+  audio.src = rf.url;
+  audio.play().catch(()=>{});
+  nowTitle.textContent = md.name;
+  nowCount.textContent = `${idx+1} / ${queue.length}`;
+  playBtn.textContent = '⏸ Pause';
+}
+playBtn.addEventListener('click', ()=>{
+  if(!audio.src){ if(tracks.length && queue.length) playById(queue[0]); return; }
+  if(audio.paused){ audio.play(); playBtn.textContent='⏸ Pause'; } else { audio.pause(); playBtn.textContent='▶️'; }
+});
+prevBtn.addEventListener('click', ()=>{ if(idx>0) idx--; playById(queue[idx]); });
+nextBtn.addEventListener('click', ()=>{ if(idx < queue.length-1) idx++; else { idx=-1; audio.pause(); audio.currentTime=0; return; } playById(queue[idx]); });
+
+/* -------------------------
+   Add files (and read cover if any)
+   ------------------------- */
+document.getElementById('iosPickerBtn').addEventListener('click', async ()=>{
+  if(window.showOpenFilePicker){
+    try{
+      const handles = await showOpenFilePicker({ multiple:true, types:[{description:'Audio Files', accept:{'audio/*':['.mp3','.m4a','.aac','.wav']}}] });
+      const files = [];
+      for(const h of handles) files.push(await h.getFile());
+      await processFiles(files);
+      return;
+    }catch(e){}
+  }
+  // else fallback: label triggers file input
+});
+fileIn.addEventListener('change', async e=>{ if(e.target.files.length) await processFiles(e.target.files); fileIn.value=''; });
+
+async function processFiles(fileList){
+  const arr = Array.from(fileList);
+  for(const f of arr){
+    const id = Date.now() + Math.floor(Math.random()*1000);
+    const md = { id, name: f.name, size: f.size, type: f.type, coverBase64: null, notes:'' };
+    // read cover via jsmediatags (if available)
+    try{
+      await new Promise((res,rej)=>{
+        window.jsmediatags.read(f, {
+          onSuccess: tag => {
+            const picture = tag.tags.picture;
+            if(picture){
+              const base64String = arrayBufferToBase64(picture.data);
+              const mime = picture.format || 'image/jpeg';
+              md.coverBase64 = `data:${mime};base64,${base64String}`;
+            }
+            res();
+          },
+          onError: err => { res(); }
+        });
+      });
+    }catch(e){}
+    tracks.push(md);
+    // runtime file store (not persistent)
     const url = URL.createObjectURL(f);
-    tracks.push({id,name:f.name,file:f,url});
-  });
+    runtimeFiles.set(id, { file: f, url });
+  }
   queue = tracks.map(t=>t.id);
   if(shuffleMode) queue = shuffleArray(queue);
   renderTracks();
+  saveMetadataOnly();
 }
 
-/* UI events */
-fileIn.addEventListener('change', e=>{ addFiles(e.target.files); fileIn.value=''; });
-drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor='#0b7fa8'; });
-drop.addEventListener('dragleave', e=>{ drop.style.borderColor=''; });
-drop.addEventListener('drop', e=>{ e.preventDefault(); drop.style.borderColor=''; addFiles(e.dataTransfer.files); });
+/* helper */
+function arrayBufferToBase64(buffer){
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for(let i=0;i<len;i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
+}
 
+/* -------------------------
+   Drag & drop
+   ------------------------- */
+drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.style.borderColor='#0b7fa8'; });
+drop.addEventListener('dragleave', ()=> drop.style.borderColor='' );
+drop.addEventListener('drop', async e=>{ e.preventDefault(); drop.style.borderColor=''; await processFiles(e.dataTransfer.files); });
+
+/* -------------------------
+   Render list
+   ------------------------- */
 function renderTracks(){
   tracksEl.innerHTML = '';
   if(tracks.length===0){ tracksEl.innerHTML = '<div class="track">Chưa có bài nào — thêm file để bắt đầu.</div>'; player.style.display='none'; return; }
-  tracks.forEach(t=>{
+  for(const t of tracks){
     const el = document.createElement('div'); el.className='track';
-    el.innerHTML = '<div>🎵 <strong>'+escapeHtml(t.name)+'</strong></div>';
-    const actions = document.createElement('div');
-    const play = document.createElement('button'); play.className='btn'; play.textContent='▶️ Phát';
-    const remove = document.createElement('button'); remove.className='btn'; remove.textContent='🗑️';
-    actions.appendChild(play); actions.appendChild(remove); el.appendChild(actions);
-    play.onclick = ()=> playById(t.id);
-    remove.onclick = ()=> { tracks = tracks.filter(x=>x.id!==t.id); queue = tracks.map(x=>x.id); if(idx>=tracks.length) idx = tracks.length-1; renderTracks(); };
+    const cover = document.createElement('div'); cover.className='cover';
+    if(t.coverBase64){
+      const img = document.createElement('img'); img.src = t.coverBase64; img.style.width='100%'; img.style.height='100%'; img.style.objectFit='cover';
+      cover.appendChild(img);
+    } else {
+      const initials = getInitials(t.name);
+      const colors = stringToColor(t.name);
+      cover.style.background = `linear-gradient(135deg, ${colors[0]}, ${colors[1]})`;
+      cover.textContent = initials;
+    }
+    const info = document.createElement('div'); info.className='track-info';
+    const title = document.createElement('div'); title.style.fontWeight='700'; title.style.whiteSpace='nowrap'; title.style.overflow='hidden'; title.style.textOverflow='ellipsis';
+    title.textContent = t.name;
+    const meta = document.createElement('div'); meta.className='small-muted'; meta.textContent = `${Math.round(t.size/1024)} KB`;
+    info.appendChild(title); info.appendChild(meta);
+    const actions = document.createElement('div'); actions.className='track-actions';
+
+    const playButton = document.createElement('button'); playButton.className='btn'; playButton.textContent='▶️ Phát';
+    playButton.onclick = ()=> playById(t.id);
+
+    const addFileBtn = document.createElement('button'); addFileBtn.className='btn'; addFileBtn.textContent='📎 (thêm file)';
+    addFileBtn.title = 'Thêm lại file nếu chỉ lưu metadata — chọn chính file mp3 tương ứng';
+    addFileBtn.onclick = ()=> {
+      // open input to select file then associate to this metadata id
+      const fi = document.createElement('input'); fi.type='file'; fi.accept='audio/*';
+      fi.onchange = async e=>{
+        const f = e.target.files[0]; if(!f) return;
+        // associate runtime file
+        if(runtimeFiles.has(t.id)){
+          const old = runtimeFiles.get(t.id);
+          URL.revokeObjectURL(old.url);
+        }
+        const url = URL.createObjectURL(f);
+        runtimeFiles.set(t.id, { file: f, url });
+        alert('File đã được thêm vào bộ nhớ tạm (runtime). Reload trang sẽ mất file này. Nếu muốn lưu vĩnh viễn, Export playlist để nhận file base64.');
+      };
+      fi.click();
+    };
+
+    const exportBtn = document.createElement('button'); exportBtn.className='btn'; exportBtn.textContent='🔗'; exportBtn.title='Tải riêng file này nếu đã thêm runtime file';
+    exportBtn.onclick = ()=> {
+      const rf = runtimeFiles.get(t.id);
+      if(!rf){ alert('Chưa có file thực tế trong runtime. Thêm file rồi thử lại (📎).'); return; }
+      const a = document.createElement('a'); a.href = rf.url; a.download = t.name; a.click();
+    };
+
+    const removeBtn = document.createElement('button'); removeBtn.className='btn'; removeBtn.textContent='🗑️';
+    removeBtn.onclick = async ()=> {
+      if(!confirm('Xóa track này?')) return;
+      // cleanup runtime
+      const rf = runtimeFiles.get(t.id);
+      if(rf){ URL.revokeObjectURL(rf.url); runtimeFiles.delete(t.id); }
+      tracks = tracks.filter(x=>x.id!==t.id);
+      queue = tracks.map(x=>x.id);
+      if(idx>=tracks.length) idx = tracks.length-1;
+      renderTracks();
+      saveMetadataOnly();
+    };
+
+    actions.appendChild(playButton);
+    actions.appendChild(addFileBtn);
+    actions.appendChild(exportBtn);
+    actions.appendChild(removeBtn);
+
+    el.appendChild(cover);
+    el.appendChild(info);
+    el.appendChild(actions);
     tracksEl.appendChild(el);
-  });
+  }
   player.style.display='block';
 }
 
-/* play controls */
-const audio = new Audio(); audio.setAttribute('playsinline','');
-function playById(id){ idx = queue.indexOf(id); const t = tracks.find(x=>x.id===id); if(!t) return; audio.src = t.url; audio.play(); nowTitle.textContent = t.name; playBtn.textContent='⏸ Pause'; }
-playBtn.addEventListener('click', ()=> {
-  if(!audio.src){ if(tracks.length) playById(queue[0]); return; }
-  if(audio.paused){ audio.play(); playBtn.textContent='⏸ Pause'; } else { audio.pause(); playBtn.textContent='▶️'; }
-});
-prevBtn.addEventListener('click', ()=> { if(idx>0) idx--; playById(queue[idx]); });
-nextBtn.addEventListener('click', ()=> { if(idx < queue.length-1) idx++; else { idx = -1; audio.pause(); audio.currentTime=0; return; } playById(queue[idx]); });
+/* small helpers */
+function getInitials(name){
+  const base = name.replace(/\.\w+$/,'').split(/[\s-_]+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();
+  return base || '♪';
+}
+function stringToColor(s){
+  let h=0; for(let i=0;i<s.length;i++) h = s.charCodeAt(i) + ((h<<5)-h);
+  const c1 = `hsl(${Math.abs(h)%360} 65% 45%)`, c2 = `hsl(${(Math.abs(h)+60)%360} 65% 60%)`;
+  return [c1,c2];
+}
 
-audio.addEventListener('timeupdate', ()=>{ if(audio.duration){ seek.value = (audio.currentTime/audio.duration)*100; timeLabel.textContent = formatTime(audio.currentTime) + ' / ' + formatTime(audio.duration); }});
-seek.addEventListener('input', e=>{ if(audio.duration) audio.currentTime = (e.target.value/100)*audio.duration; });
-audio.addEventListener('ended', ()=> { if(idx < queue.length-1){ idx++; playById(queue[idx]); } else { audio.pause(); playBtn.textContent='▶️'; }});
-
-/* shuffle toggle */
-document.getElementById('shuffle').addEventListener('click', ()=> {
+/* -------------------------
+   Shuffle / Repeat modes
+   ------------------------- */
+shuffleBtn.addEventListener('click', ()=>{
   shuffleMode = !shuffleMode;
   queue = shuffleMode ? shuffleArray(tracks.map(t=>t.id)) : tracks.map(t=>t.id);
-  document.getElementById('shuffle').textContent = shuffleMode ? '🔀 ON' : '🔀 Shuffle';
+  shuffleBtn.textContent = shuffleMode ? '🔀 ON' : '🔀 Shuffle';
+});
+repeatBtn.addEventListener('click', ()=>{
+  if(repeatMode==='off') repeatMode='one';
+  else if(repeatMode==='one') repeatMode='all';
+  else repeatMode='off';
+  repeatBtn.textContent = `🔁 Repeat: ${repeatMode}`;
 });
 
-/* export/import */
-document.getElementById('export').addEventListener('click', async ()=>{
-  if(tracks.length===0){ alert('Không có bài để export'); return; }
-  const payload = {createdAt:Date.now(), version:1, tracks:[]};
+/* -------------------------
+   Export / Import
+   - Export will INCLUDE base64 of files (heavy) so user can import elsewhere.
+   - Import will re-create metadata + runtime files if base64 present.
+   ------------------------- */
+exportBtn.addEventListener('click', async ()=>{
+  if(tracks.length===0){ alert('Không có track để export'); return; }
+  if(!confirm('Export sẽ tạo file JSON lớn (bao gồm base64 của MP3 nếu runtime file có). Bạn chắc?')) return;
+  const payload = { createdAt: Date.now(), version: 1, tracks: [] };
   for(const t of tracks){
-    const base = await blobToBase64(t.file);
-    payload.tracks.push({name:t.name,type:t.file.type,base});
+    const rec = { name: t.name, size: t.size, type: t.type, cover: t.coverBase64 || null, base: null };
+    const rf = runtimeFiles.get(t.id);
+    if(rf){
+      // read file to base64
+      rec.base = await blobToBase64(rf.file);
+    }
+    payload.tracks.push(rec);
   }
   const blob = new Blob([JSON.stringify(payload)],{type:'application/json'});
-  const fname = `yuung_export_${new Date().toISOString().slice(0,10)}.yuung.json`;
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `yuung_export_${new Date().toISOString().slice(0,10)}.yuung.json`; a.click();
 });
-document.getElementById('import').addEventListener('click', ()=> {
-  const fi = document.createElement('input'); fi.type='file'; fi.accept='.json,.yuung.json,application/json'; fi.onchange = async e=>{
+
+importBtn.addEventListener('click', ()=>{
+  const fi = document.createElement('input'); fi.type='file'; fi.accept='.json,.yuung.json,application/json';
+  fi.onchange = async e=>{
     const f = e.target.files[0]; if(!f) return;
-    const text = await f.text(); try{
-      const p = JSON.parse(text);
-      if(!p.tracks) throw 'invalid';
+    try{
+      const text = await f.text(); const p = JSON.parse(text); if(!p.tracks) throw 'invalid';
       for(const item of p.tracks){
-        const b = base64ToBlob(item.base, item.type);
-        addFiles([new File([b], item.name, {type:item.type})]);
+        const id = Date.now() + Math.floor(Math.random()*1000);
+        const md = { id, name: item.name, size: item.size||0, type: item.type||'audio/mpeg', coverBase64: item.cover||null, notes:'' };
+        tracks.push(md);
+        // if base present, create runtime File and URL
+        if(item.base){
+          const blob = base64ToBlob(item.base, item.type||'audio/mpeg');
+          const file = new File([blob], item.name, {type: item.type||'audio/mpeg'});
+          const url = URL.createObjectURL(file);
+          runtimeFiles.set(id, { file, url });
+        }
       }
-      alert('Import xong');
-    }catch(err){ alert('Import lỗi'); }
-  }; fi.click();
+      queue = tracks.map(t=>t.id);
+      renderTracks();
+      saveMetadataOnly();
+      alert('Import xong!');
+    }catch(err){ console.error(err); alert('Import lỗi'); }
+  };
+  fi.click();
 });
 
-/* clear */
-document.getElementById('clear').addEventListener('click', ()=> { if(confirm('Xóa toàn bộ playlist?')){ tracks=[]; queue=[]; idx=-1; audio.pause(); audio.src=''; renderTracks(); }});
+/* -------------------------
+   Download all (creates zip client-side)
+   - We implement a simple zip using JSZip via CDN if available; fallback: download individually
+   ------------------------- */
+downloadAllBtn.addEventListener('click', async ()=>{
+  const files = [];
+  for(const t of tracks){
+    const rf = runtimeFiles.get(t.id);
+    if(rf) files.push({name: t.name, file: rf.file});
+  }
+  if(files.length===0){ alert('Không có file thực tế trong runtime để đóng gói. Hãy thêm file (📎) cho từng track hoặc export/import đầy đủ.'); return; }
 
-/* utils */
-function shuffleArray(a){ const arr = [...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-function formatTime(s){ if(!s) return '0:00'; const m=Math.floor(s/60); const sec=Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`; }
-function blobToBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=()=>rej(r.error); r.readAsDataURL(file); }); }
-function base64ToBlob(b64, type){ const bin = atob(b64); let len = bin.length; const u8 = new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8], {type:type||'audio'}); }
-function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+  // try to use JSZip if present
+  if(window.JSZip){
+    const zip = new JSZip();
+    files.forEach(f=> zip.file(f.name, f.file));
+    const content = await zip.generateAsync({type:'blob'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = 'yuung_tracks.zip'; a.click();
+  } else {
+    // fallback: download one by one
+    if(!confirm('JSZip không được tải. Sẽ tải từng file một. OK?')) return;
+    files.forEach(f=>{
+      const url = URL.createObjectURL(f.file);
+      const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+});
+
+/* -------------------------
+   Clear
+   ------------------------- */
+clearBtn.addEventListener('click', ()=>{
+  if(!confirm('Xóa toàn bộ playlist?')) return;
+  // clear runtime urls
+  runtimeFiles.forEach(v=>{ if(v.url) URL.revokeObjectURL(v.url); });
+  runtimeFiles.clear();
+  tracks = []; queue = []; idx = -1;
+  audio.pause(); audio.src='';
+  renderTracks();
+  saveMetadataOnly();
+});
+
+/* -------------------------
+   Helpers: base64 <-> blob, shuffle
+   ------------------------- */
+function blobToBase64(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = ()=> res(r.result.split(',')[1]);
+    r.onerror = ()=> rej(r.error);
+    r.readAsDataURL(file);
+  });
+}
+function base64ToBlob(b64, type){
+  const bin = atob(b64);
+  let len = bin.length;
+  const u8 = new Uint8Array(len);
+  for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i);
+  return new Blob([u8], {type:type||'application/octet-stream'});
+}
+function shuffleArray(a){ const arr=[...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+
+/* -------------------------
+   Save / Load metadata-only to localStorage
+   - We store: name,size,type,coverBase64 (optional)
+   - Does NOT include audio base64 (keeps storage small)
+   ------------------------- */
+function saveMetadataOnly(){
+  try{
+    const payload = { createdAt: Date.now(), version:1, tracks: tracks.map(t=>({ name:t.name, size:t.size, type:t.type, cover: t.coverBase64||null })) };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }catch(err){ console.warn('Save metadata failed', err); }
+}
+function loadMetadataOnly(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(!raw) return;
+  try{
+    const p = JSON.parse(raw);
+    if(!p.tracks) return;
+    for(const item of p.tracks){
+      const id = Date.now() + Math.floor(Math.random()*1000);
+      const md = { id, name: item.name, size: item.size||0, type: item.type||'audio/mpeg', coverBase64: item.cover||null, notes:'' };
+      tracks.push(md);
+      // runtimeFiles left empty → user must re-add actual file if they want to play
+    }
+    queue = tracks.map(t=>t.id);
+    renderTracks();
+  }catch(e){ console.warn('Load metadata fail', e); }
+}
+
+/* -------------------------
+   PWA: manifest + service worker registration
+   ------------------------- */
+try{
+  // dynamic manifest (single-file friendly)
+  const manifest = {
+    name: "Yuung Playlist",
+    short_name: "Yuung",
+    start_url: ".",
+    display: "standalone",
+    background_color: "#0b7fa8",
+    theme_color: "#0b7fa8",
+    icons: [
+      { src: "data:image/svg+xml;base64," + btoa(`<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'><rect rx='24' width='100%' height='100%' fill='#0b7fa8'/><text x='50%' y='55%' font-size='72' text-anchor='middle' fill='white'>🎧</text></svg>`), sizes: "192x192", type: "image/svg+xml" }
+    ]
+  };
+  const mblob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const murl = URL.createObjectURL(mblob);
+  const l = document.createElement('link'); l.rel = 'manifest'; l.href = murl; document.head.appendChild(l);
+}catch(e){ console.warn(e); }
+
+if('serviceWorker' in navigator){
+  // try register blob sw (best-effort)
+  const swCode = `
+    const CACHE = 'yuung-static-v1';
+    const OFFLINE_URL = '.';
+    self.addEventListener('install', evt => {
+      self.skipWaiting();
+      evt.waitUntil(caches.open(CACHE).then(c=>c.addAll([OFFLINE_URL]).catch(()=>{})));
+    });
+    self.addEventListener('activate', evt => { evt.waitUntil(self.clients.claim()); });
+    self.addEventListener('fetch', evt => {
+      evt.respondWith(caches.match(evt.request).then(r=> r || fetch(evt.request).catch(()=> caches.match(OFFLINE_URL))));
+    });
+  `;
+  try{
+    const swBlob = new Blob([swCode], {type:'application/javascript'});
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).then(reg=>{ console.log('SW registered (blob)'); }).catch(err=>{
+      console.warn('Blob SW failed', err);
+      // fallback: register /sw.js if present on server
+      navigator.serviceWorker.register('/sw.js').then(()=>console.log('SW registered /sw.js fallback')).catch(()=>console.warn('SW fallback failed'));
+    });
+  }catch(err){ console.warn('SW create failed', err); }
+}
+
+/* prompt install */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt = e; installBtn.style.display='inline-block'; installBtn.onclick = async ()=>{ deferredPrompt.prompt(); const {outcome} = await deferredPrompt.userChoice; deferredPrompt = null; installBtn.style.display='none'; }; });
+
+/* -------------------------
+   INIT load metadata
+   ------------------------- */
+loadMetadataOnly();
+renderTracks();
+
+/* -------------------------
+   Optional: load JSZip for downloadAll (CDN)
+   - We'll try to dynamically load JSZip so downloadAll can zip files.
+   ------------------------- */
+(function tryLoadZip(){
+  const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+  s.onload = ()=> console.log('JSZip loaded'); s.onerror=()=>console.log('JSZip not loaded');
+  document.head.appendChild(s);
+})();
+
 </script>
 </body>
 </html>
