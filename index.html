@@ -6,141 +6,201 @@
 <title>Yuung Playlist — Full (Offline, PWA, IndexedDB)</title>
 <meta name="theme-color" content="#0b7fa8" id="metaThemeColor">
 
-<!-- NOTE: jsmediatags CDN (used to read ID3 cover). For true first-run offline, host locally. -->
 <script src="https://unpkg.com/jsmediatags@3.9.5/dist/jsmediatags.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <style>
-  /* ============================
-   DARK MODE – CHỮ TRẮNG FULL
-   ============================ */
-.dark-mode {
-    --bg-color: #0e0e0e;
-    --text-color: #ffffff;
-}
+    /* ============================
+    DARK MODE – CHỮ TRẮNG FULL
+    ============================ */
+    .dark-mode {
+        --bg-color: #0e0e0e;
+        --text-color: #ffffff;
+    }
 
-.dark-mode body,
-.dark-mode * {
-    color: var(--text-color) !important;
-}
+    .dark-mode body,
+    .dark-mode * {
+        color: var(--text-color) !important;
+    }
 
-/* Nền container + card */
-.dark-mode .container,
-.dark-mode .music-item,
-.dark-mode .music-card,
-.dark-mode .playlist {
-    background: #1a1a1a !important;
-    border-color: rgba(255,255,255,0.2) !important;
-}
+    /* Nền container + card */
+    .dark-mode .container,
+    .dark-mode .music-item,
+    .dark-mode .music-card,
+    .dark-mode .playlist {
+        background: #1a1a1a !important;
+        border-color: rgba(255,255,255,0.2) !important;
+    }
 
-/* Tiêu đề */
-.dark-mode h1,
-.dark-mode h2,
-.dark-mode h3 {
-    color: #fff !important;
-}
+    /* Tiêu đề */
+    .dark-mode h1,
+    .dark-mode h2,
+    .dark-mode h3 {
+        color: #fff !important;
+    }
 
-/* Input + button */
-.dark-mode input,
-.dark-mode button {
-    background: #2a2a2a !important;
-    color: #fff !important;
-    border-color: rgba(255,255,255,0.2) !important;
-}
+    /* Input + button */
+    .dark-mode input,
+    .dark-mode button {
+        background: #2a2a2a !important;
+        color: #fff !important;
+        border-color: rgba(255,255,255,0.2) !important;
+    }
 
-/* Player */
-.dark-mode .player-controls,
-.dark-mode #title {
-    color: #fff !important;
-}
+    /* Player */
+    .dark-mode .player-controls,
+    .dark-mode #title {
+        color: #fff !important;
+    }
 
-  /* ============================
-     THEME & LAYOUT
-     ============================ */
-  :root{
-    --bg1: #f0fbff;
-    --bg2: #e6f9ff;
-    --card: #ffffff;
-    --muted: #6b8b92;
-    --text: #043242;
-    --accent: #ff4757;
-    --accent2: #00a6ff;
-    --glass: rgba(255,255,255,0.6);
-    --radius: 16px;
-    --shadow: 0 8px 28px rgba(3,50,64,0.06);
-  }
-  [data-theme="dark"]{
-    --bg1: #03181d;
-    --bg2: #07262e;
-    --card: #071722;
-    --muted: #9fdff5;
-    --text: #dff8ff;
-    --accent: #ff6b87;
-    --accent2: #06b3ff;
-    --glass: rgba(255,255,255,0.02);
-    --shadow: 0 8px 30px rgba(0,0,0,0.6);
-  }
+    /* Thanh seek trong dark mode */
+    .dark-mode input[type=range] {
+        background: rgba(255,255,255,0.2);
+    }
+    .dark-mode input[type=range]::-webkit-slider-thumb {
+        background: var(--accent);
+    }
 
-  html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue";background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--text);-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1100px;margin:20px auto;padding:18px}
-  header{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow)}
-  .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:800}
-  h1{margin:0;font-size:20px}
-  .subtitle{font-size:13px;color:var(--muted)}
+    /* ============================
+      THEME & LAYOUT
+      ============================ */
+    :root{
+      --bg1: #f0fbff;
+      --bg2: #e6f9ff;
+      --card: #ffffff;
+      --muted: #6b8b92;
+      --text: #043242;
+      --accent: #ff4757; /* Đỏ */
+      --accent2: #00a6ff; /* Xanh dương */
+      --glass: rgba(255,255,255,0.6);
+      --radius: 16px;
+      --shadow: 0 4px 10px rgba(3,50,64,0.08), 0 10px 30px rgba(3,50,64,0.04); /* Cải tiến bóng đổ */
+    }
+    [data-theme="dark"]{
+      --bg1: #03181d;
+      --bg2: #07262e;
+      --card: #071722;
+      --muted: #9fdff5;
+      --text: #dff8ff;
+      --accent: #ff6b87;
+      --accent2: #06b3ff;
+      --glass: rgba(255,255,255,0.02);
+      --shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
 
-  /* controls */
-  .controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
-  .btn{background:var(--card);border:0;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);font-size:14px}
-  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700}
-  .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06)}
+    html,body{height:100%;margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue";background:linear-gradient(180deg,var(--bg1),var(--bg2));color:var(--text);-webkit-font-smoothing:antialiased}
+    .wrap{max-width:1100px;margin:20px auto;padding:18px}
+    header{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow)}
+    .logo{width:64px;height:64px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:white;font-size:28px;font-weight:800}
+    h1{margin:0;font-size:20px}
+    .subtitle{font-size:13px;color:var(--muted)}
 
-  .grid{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:18px}
-  @media (max-width:900px){ .grid{grid-template-columns:1fr; } }
+    /* controls */
+    .controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+    .btn{background:var(--card);border:0;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);font-size:14px}
+    .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700}
+    .btn.ghost{background:transparent;border:1px solid rgba(0,0,0,0.06)}
 
-  /* left column: player + add */
-  .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
-  .cover{width:100%;height:320px;border-radius:12px;background:linear-gradient(135deg,#ddd,#bbb);display:flex;align-items:center;justify-content:center;font-size:42px;color:white;font-weight:800;overflow:hidden}
-  .meta{margin-top:12px}
-  .meta h2{margin:0;font-size:18px}
-  .meta .small{font-size:13px;color:var(--muted);margin-top:6px}
+    /* Hiệu ứng tương tác */
+    .btn, .file-btn, .track{transition:all .2s ease}
+    .btn:hover:not(.primary), .file-btn:hover, .track:hover{transform:translateY(-2px); box-shadow: 0 6px 15px rgba(3,50,64,0.1); background: var(--bg2);}
+    .btn:active, .file-btn:active{transform:scale(0.98); opacity:0.9;}
+    .btn.primary:hover{transform:translateY(-2px); box-shadow: 0 6px 15px rgba(255,71,87,0.3);}
 
-  .file-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-  label.file-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--card);cursor:pointer;border:1px dashed rgba(0,0,0,0.06)}
-  input[type=file]{display:none}
 
-  /* save offline toggle and storage status */
-  .row{display:flex;align-items:center;gap:10px}
-  .toggle{padding:8px 12px;border-radius:12px;background:var(--card);cursor:pointer;box-shadow:var(--shadow)}
-  .status{font-size:13px;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:18px}
+    @media (max-width:900px){ .grid{grid-template-columns:1fr; } }
 
-  /* right column: playlist */
-  .playlist{display:flex;flex-direction:column;gap:10px}
-  .search-row{display:flex;gap:8px;align-items:center}
-  .search{flex:1;padding:10px;border-radius:12px;border:1px solid rgba(0,0,0,0.06);background:transparent}
-  .track{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
-  .track .t-cover{width:64px;height:64px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#ddd,#ccc);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
-  .track .t-info{flex:1;min-width:0}
-  .t-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .t-sub{font-size:12px;color:var(--muted);margin-top:6px}
+    /* left column: player + add */
+    .card{background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow)}
+    .cover{
+        width:100%;height:320px;border-radius:12px;
+        background:linear-gradient(135deg,#ddd,#bbb);
+        display:flex;align-items:center;justify-content:center;
+        font-size:42px;color:white;font-weight:800;overflow:hidden;
+        /* Cải tiến Cover */
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        border: 4px solid var(--bg1);
+    }
+    .meta{margin-top:12px}
+    .meta h2{margin:0;font-size:18px}
+    .meta .small{font-size:13px;color:var(--muted);margin-top:6px}
 
-  .track .t-actions{display:flex;gap:6px}
+    .file-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    label.file-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--card);cursor:pointer;border:1px dashed rgba(0,0,0,0.06)}
+    input[type=file]{display:none}
 
-  /* bottom player sticky */
-  .player-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;width:calc(100% - 60px);max-width:1100px;background:var(--card);padding:12px;border-radius:16px;box-shadow:0 14px 40px rgba(3,50,64,0.12);display:flex;align-items:center;gap:12px}
-  .player-cover{width:60px;height:60px;border-radius:10px;overflow:hidden}
-  .player-controls{display:flex;align-items:center;gap:8px}
-  .seek{flex:1}
-  .time{min-width:110px;text-align:right;font-size:13px;color:var(--muted)}
+    /* save offline toggle and storage status */
+    .row{display:flex;align-items:center;gap:10px}
+    .toggle{padding:8px 12px;border-radius:12px;background:var(--card);cursor:pointer;box-shadow:var(--shadow)}
+    .status{font-size:13px;color:var(--muted)}
 
-  /* small screens */
-  @media (max-width:520px){
-    .cover{height:220px}
-    .player-bar{width:calc(100% - 28px);padding:10px}
-    .player-cover{width:48px;height:48px}
-  }
+    /* right column: playlist */
+    .playlist{display:flex;flex-direction:column;gap:10px}
+    .search-row{display:flex;gap:8px;align-items:center}
+    .search{flex:1;padding:10px;border-radius:12px;border:1px solid rgba(0,0,0,0.06);background:transparent}
+    .track{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:var(--card);box-shadow:var(--shadow)}
+    .track .t-cover{width:64px;height:64px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#ddd,#ccc);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+    .track .t-info{flex:1;min-width:0}
+    .t-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .t-sub{font-size:12px;color:var(--muted);margin-top:6px}
 
-  /* micro transitions */
-  .btn, .file-btn, .track{transition:all .15s ease}
-  .track:hover{transform:translateY(-4px)}
+    .track .t-actions{display:flex;gap:6px}
+    .track .t-actions .btn {
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    /* Nổi bật nút Play trong danh sách */
+    .track .t-actions .btn-play-track {
+        background: var(--accent2);
+        color: white;
+        font-weight: 700;
+    }
+
+    /* Tạo kiểu cho thanh Seek (Range Input) */
+    input[type=range] {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 8px;
+        background: rgba(0,0,0,0.1);
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background .2s ease;
+    }
+    input[type=range]:focus {
+        outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 4px rgba(0,0,0,0.4);
+        transition: background .2s ease;
+    }
+
+    /* bottom player sticky */
+    .player-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;width:calc(100% - 60px);max-width:1100px;background:var(--card);padding:12px;border-radius:16px;box-shadow:0 14px 40px rgba(3,50,64,0.12);display:flex;align-items:center;gap:12px}
+    .player-cover{width:60px;height:60px;border-radius:10px;overflow:hidden}
+    .player-controls{display:flex;align-items:center;gap:8px}
+    .seek{flex:1}
+    .time{min-width:110px;text-align:right;font-size:13px;color:var(--muted)}
+
+    /* small screens */
+    @media (max-width:520px){
+      .cover{height:220px}
+      .player-bar{width:calc(100% - 28px);padding:10px}
+      .player-cover{width:48px;height:48px}
+      /* Ẩn seek bar và thời gian ở thanh dưới trên màn hình nhỏ */
+      #barSeek, #barTime { display: none !important; }
+      .player-bar { justify-content: space-between; }
+    }
+
 </style>
 </head>
 <body>
@@ -154,27 +214,26 @@
     </div>
     <div style="display:flex;gap:8px">
       <button id="themeToggle" class="btn">🌙</button>
-      <button id="installBtn" class="btn">📲 Install</button>
+      <button id="installBtn" class="btn">📲 Cài đặt</button>
     </div>
   </header>
 
   <div class="controls" style="margin-top:14px">
-    <label class="file-btn" id="addFilesBtn">➕ Thêm file
+    <label class="file-btn" id="addFilesBtn">➕ Thêm file nhạc
       <input id="fileInput" type="file" accept="audio/*" multiple />
     </label>
 
-    <label class="file-btn" id="addCoverBtn">🖼️ Thêm cover (tùy chọn)
+    <label class="file-btn" id="addCoverBtn">🖼️ Thêm cover chung
       <input id="coverInput" type="file" accept="image/*" />
     </label>
 
     <div class="row" style="margin-left:auto;gap:8px">
-      <div class="status" id="storageStatus">Offline files: 0</div>
-      <button id="toggleSaveFiles" class="btn">💾 Save offline: Off</button>
+      <div class="status" id="storageStatus">File ngoại tuyến: 0</div>
+      <button id="toggleSaveFiles" class="btn">💾 Tự động lưu: Tắt</button>
     </div>
   </div>
 
   <div class="grid">
-    <!-- LEFT: Player + controls -->
     <div>
       <div class="card">
         <div class="cover" id="mainCover">🎵</div>
@@ -186,9 +245,9 @@
 
         <div style="margin-top:12px">
           <div style="display:flex;gap:8px;align-items:center">
-            <button id="prev" class="btn">⏮</button>
-            <button id="play" class="btn primary">▶️</button>
-            <button id="next" class="btn">⏭</button>
+            <button id="prev" class="btn">⏮ Bài trước</button>
+            <button id="play" class="btn primary">▶️ Play</button>
+            <button id="next" class="btn">⏭ Bài sau</button>
 
             <div style="flex:1;margin-left:8px">
               <input id="seek" type="range" min="0" max="100" value="0" class="seek" style="width:100%">
@@ -199,10 +258,10 @@
 
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
             <button id="shuffleBtn" class="btn">🔀 Shuffle</button>
-            <button id="repeatBtn" class="btn">🔁 Repeat: Off</button>
+            <button id="repeatBtn" class="btn">🔁 Lặp: Tắt</button>
             <button id="exportBtn" class="btn">📤 Export</button>
             <button id="importBtn" class="btn">📥 Import</button>
-            <button id="clearBtn" class="btn">🗑️ Clear</button>
+            <button id="clearBtn" class="btn">🗑️ Xóa hết</button>
           </div>
         </div>
       </div>
@@ -210,8 +269,8 @@
       <div style="margin-top:12px" class="card">
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div>
-            <strong>Storage</strong>
-            <div class="small">Bạn có thể lưu file vào bộ nhớ của trình duyệt (IndexedDB) để phát offline.</div>
+            <strong>Quản lý Storage</strong>
+            <div class="small">Bạn có thể lưu file vào bộ nhớ trình duyệt để phát offline.</div>
           </div>
           <div style="text-align:right">
             <div id="idbUsage" class="small-muted">IDB: 0 files</div>
@@ -220,18 +279,17 @@
         </div>
 
         <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-          <button id="saveAllBtn" class="btn">💾 Save all to IDB</button>
-          <button id="removeAllSavedBtn" class="btn">🧹 Remove saved files</button>
+          <button id="saveAllBtn" class="btn">💾 Lưu tất cả</button>
+          <button id="removeAllSavedBtn" class="btn">🧹 Xóa file đã lưu</button>
         </div>
       </div>
     </div>
 
-    <!-- RIGHT: Playlist -->
     <div>
       <div class="card">
         <div class="search-row">
           <input id="search" class="search" placeholder="Tìm trong playlist..." />
-          <button id="downloadAll" class="btn">⬇️ Download all</button>
+          <button id="downloadAll" class="btn">⬇️ Tải tất cả</button>
         </div>
 
         <div id="playlist" style="margin-top:12px" class="playlist"></div>
@@ -240,7 +298,6 @@
   </div>
 </div>
 
-<!-- Sticky player -->
 <div class="player-bar" id="playerBar" style="display:none">
   <div class="player-cover" id="barCover">🎵</div>
   <div style="flex:1">
@@ -259,25 +316,25 @@
 </div>
 
 <script>
+// ---------- DARK MODE & THEME TOGGLE ----------
 function toggleDarkMode() {
-    document.documentElement.classList.toggle("dark-mode");
-    localStorage.setItem("darkMode", document.documentElement.classList.contains("dark-mode") ? "1" : "0");
+    const isDark = document.documentElement.classList.toggle("dark-mode");
+    localStorage.setItem("darkMode", isDark ? "1" : "0");
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.getElementById('metaThemeColor').setAttribute('content', isDark ? '#1a1a1a' : '#0b7fa8');
 }
 // Tự bật dark mode nếu lần trước bật
 if (localStorage.getItem("darkMode") === "1") {
     document.documentElement.classList.add("dark-mode");
+    document.documentElement.setAttribute('data-theme', 'dark');
+} else {
+    document.documentElement.setAttribute('data-theme', 'light');
 }
-  /* ===================================================
-   FULL APP SCRIPT
-   - Features:
-     · Add / Drop files
-     · Read ID3 cover via jsmediatags if available
-     · Playlist metadata saved in localStorage
-     · Save audio files to IndexedDB for offline playback
-     · Export / Import (export can include base64 of files if present)
-     · PWA: dynamic manifest + service worker blob registration
-     · Player controls (play/pause/next/prev/seek/shuffle/repeat)
-   =================================================== */
+themeToggle.addEventListener('click', toggleDarkMode);
+
+/* ===================================================
+  FULL APP SCRIPT (Đã tinh chỉnh)
+  =================================================== */
 
 (async()=>{ // IIFE to keep scope
 
@@ -287,53 +344,16 @@ let tracks = []; // {id,name,size,type,coverBase64, saved:bool}
 let runtimeFiles = new Map(); // id -> {file:File, url:objectURL}
 let queue = [], idx = -1;
 let shuffleMode = false, repeatMode = 'off';
-let saveFilesOffline = false;
+let saveFilesOffline = localStorage.getItem('saveFilesOffline') === '1'; // Load state
 
-// ---------- DOM Refs ----------
-const fileInput = document.getElementById('fileInput');
-const coverInput = document.getElementById('coverInput');
-const addFilesBtn = document.getElementById('addFilesBtn');
-const addCoverBtn = document.getElementById('addCoverBtn');
-const playlistEl = document.getElementById('playlist');
-const nowTitle = document.getElementById('nowTitle');
-const nowMeta = document.getElementById('nowMeta');
-const mainCover = document.getElementById('mainCover');
-const playBtn = document.getElementById('play');
-const prevBtn = document.getElementById('prev');
-const nextBtn = document.getElementById('next');
-const seek = document.getElementById('seek');
-const timeLabel = document.getElementById('timeLabel');
-const shuffleBtn = document.getElementById('shuffleBtn');
-const repeatBtn = document.getElementById('repeatBtn');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const clearBtn = document.getElementById('clearBtn');
-const storageStatus = document.getElementById('storageStatus');
-const toggleSaveFiles = document.getElementById('toggleSaveFiles');
-const saveAllBtn = document.getElementById('saveAllBtn');
-const removeAllSavedBtn = document.getElementById('removeAllSavedBtn');
-const idbUsage = document.getElementById('idbUsage');
-const downloadAllBtn = document.getElementById('downloadAll');
-const searchInput = document.getElementById('search');
-const installBtn = document.getElementById('installBtn');
-const themeToggle = document.getElementById('themeToggle');
-
-// bottom bar
-const playerBar = document.getElementById('playerBar');
-const barCover = document.getElementById('barCover');
-const barTitle = document.getElementById('barTitle');
-const barSub = document.getElementById('barSub');
-const barPlay = document.getElementById('barPlay');
-const barPrev = document.getElementById('barPrev');
-const barNext = document.getElementById('barNext');
-const barSeek = document.getElementById('barSeek');
-const barTime = document.getElementById('barTime');
+// ---------- DOM Refs (Đã định nghĩa ở trên) ----------
+// ... (Các định nghĩa DOM refs đã có) ...
 
 // audio
 const audio = new Audio();
 audio.setAttribute('playsinline','');
 
-// ---------- IndexedDB helpers ----------
+// ---------- IndexedDB helpers (Không thay đổi) ----------
 const IDB_DB = 'yuung_db_v1', IDB_STORE = 'files';
 
 function openDB(){ return new Promise((res,rej)=>{
@@ -395,6 +415,12 @@ async function idbCount(){ const keys = await idbGetAllKeys(); return keys.lengt
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function fmtTime(s){ if(!s && s!==0) return '0:00'; const m = Math.floor(s/60); const sec = Math.floor(s%60); return `${m}:${sec.toString().padStart(2,'0')}`; }
 function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function initials(name){ return name.replace(/\.\w+$/,'').split(/[\s-_]+/).slice(0,2).map(s=>s[0]).join('').toUpperCase() || '♪'; }
+function gradientFromString(s){ let h=0; for(let i=0;i<s.length;i++) h = s.charCodeAt(i) + ((h<<5)-h); const a = `hsl(${Math.abs(h)%360} 70% 45%)`, b = `hsl(${(Math.abs(h)+60)%360} 70% 60%)`; return `linear-gradient(135deg, ${a}, ${b})`;}
+function shuffleArray(a){ const arr=[...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+function arrayBufferToBase64(buffer){ let binary=''; const bytes=new Uint8Array(buffer); for(let i=0;i<bytes.byteLength;i++) binary+=String.fromCharCode(bytes[i]); return btoa(binary); }
+function blobToBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=> res(r.result.split(',')[1]); r.onerror=()=> rej(r.error); r.readAsDataURL(file); }); }
+function base64ToBlob(b64, type){ const bin = atob(b64); let len = bin.length; const u8 = new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:type||'application/octet-stream'}); }
 
 // ---------- Load & Save metadata ----------
 function saveMeta(){
@@ -410,9 +436,22 @@ function loadMeta(){
     const p = JSON.parse(raw);
     if(!p.tracks) return;
     tracks = p.tracks.map(x=>({ ...x }));
-    // queue
     queue = tracks.map(t=>t.id);
   }catch(e){ console.warn('loadMeta err', e); }
+}
+
+// ---------- UI Update & Storage Status ----------
+function updateStorageUI(){
+    const savedCount = tracks.filter(t=>t.saved).length;
+    storageStatus.textContent = `File ngoại tuyến: ${savedCount}`;
+    idbUsage.textContent = `IDB: ${savedCount} files`;
+
+    toggleSaveFiles.textContent = saveFilesOffline ? '💾 Tự động lưu: Bật' : '💾 Tự động lưu: Tắt';
+
+    // Update repeat button text
+    if (repeatMode === 'off') repeatBtn.textContent = '🔁 Lặp: Tắt';
+    else if (repeatMode === 'one') repeatBtn.textContent = '🔂 Lặp: 1 bài';
+    else if (repeatMode === 'all') repeatBtn.textContent = '🔁 Lặp: Playlist';
 }
 
 // ---------- Render playlist ----------
@@ -428,20 +467,20 @@ function renderPlaylist(filter=''){
 
     const info = document.createElement('div'); info.className='t-info';
     const title = document.createElement('div'); title.className='t-title'; title.textContent = t.name;
-    const sub = document.createElement('div'); sub.className='t-sub'; sub.textContent = `${Math.round((t.size||0)/1024)} KB ${t.saved? '· Saved' : ''}`;
+    const sub = document.createElement('div'); sub.className='t-sub';
+    sub.innerHTML = `${Math.round((t.size||0)/1024)} KB ${t.saved? '· 💾 Đã lưu' : ''}`;
     info.appendChild(title); info.appendChild(sub);
 
     const actions = document.createElement('div'); actions.className='t-actions';
-    const play = document.createElement('button'); play.className='btn'; play.textContent='▶️'; play.onclick = ()=> playById(t.id);
-    const attach = document.createElement('button'); attach.className='btn'; attach.textContent='📎'; attach.title='Thêm file (nếu chỉ lưu metadata)';
+    const play = document.createElement('button'); play.className='btn btn-play-track'; play.textContent='▶️'; play.title='Phát'; play.onclick = ()=> playById(t.id);
+    const attach = document.createElement('button'); attach.className='btn'; attach.textContent='📎'; attach.title='Gắn file tạm thời';
     attach.onclick = ()=> attachFileToMeta(t.id);
-    const dl = document.createElement('button'); dl.className='btn'; dl.textContent='🔗'; dl.onclick = ()=> downloadTrack(t.id);
-    const del = document.createElement('button'); del.className='btn'; del.textContent='🗑️'; del.onclick = async ()=>{
-      if(!confirm('Xóa track này?')) return;
+    const del = document.createElement('button'); del.className='btn'; del.textContent='🗑️'; del.title='Xóa'; del.onclick = async ()=>{
+      if(!confirm(`Xóa track "${t.name}"?`)) return;
       await removeTrack(t.id);
     };
 
-    actions.appendChild(play); actions.appendChild(attach); actions.appendChild(dl); actions.appendChild(del);
+    actions.appendChild(play); actions.appendChild(attach); actions.appendChild(del);
 
     el.appendChild(coverEl); el.appendChild(info); el.appendChild(actions);
     playlistEl.appendChild(el);
@@ -454,7 +493,19 @@ function setNowUI(t){
   nowMeta.textContent = t ? `${Math.round((t.size||0)/1024)} KB` : '—';
   if(t && t.coverBase64){ mainCover.innerHTML = `<img src="${t.coverBase64}" style="width:100%;height:100%;object-fit:cover">`; barCover.innerHTML = `<img src="${t.coverBase64}" style="width:100%;height:100%;object-fit:cover">`; }
   else { mainCover.textContent = t ? initials(t.name) : '🎵'; mainCover.style.background = t ? gradientFromString(t.name) : ''; barCover.textContent = t ? initials(t.name) : '🎵'; barCover.style.background = t ? gradientFromString(t.name) : ''; }
-  if(t){ playerBar.style.display = 'flex'; barTitle.textContent = t.name; barSub.textContent = `${Math.round((t.size||0)/1024)} KB`; } else { playerBar.style.display='none'; }
+  
+  if(t){
+    playerBar.style.display = 'flex';
+    barTitle.textContent = t.name;
+    barSub.textContent = `${Math.round((t.size||0)/1024)} KB`;
+  } else {
+    playerBar.style.display='none';
+  }
+}
+
+function updatePlayButton(isPlaying) {
+    playBtn.textContent = isPlaying ? '⏸ Tạm dừng' : '▶️ Play';
+    barPlay.textContent = isPlaying ? '⏸' : '▶️';
 }
 
 function playById(id){
@@ -466,7 +517,7 @@ function playById(id){
     audio.src = rf.url;
     audio.play().catch(()=>{});
     setNowUI(t);
-    playBtn.textContent = '⏸ Pause'; barPlay.textContent='⏸';
+    updatePlayButton(true);
     return;
   }
   // if saved in IDB, get blob
@@ -474,21 +525,39 @@ function playById(id){
     idbGet(id).then(rec=>{
       if(rec && rec.blob){
         const url = URL.createObjectURL(rec.blob);
-        runtimeFiles.set(id,{file:rec.blob,url});
+        runtimeFiles.set(id,{file:rec.blob,url}); // Add to runtime for next plays
         audio.src = url; audio.play().catch(()=>{});
         setNowUI(t);
-        playBtn.textContent='⏸ Pause'; barPlay.textContent='⏸';
+        updatePlayButton(true);
       } else {
-        alert('Không tìm thấy file lưu. Vui lòng import lại hoặc lưu file offline.');
+        alert('Không tìm thấy file lưu trong IndexedDB. Vui lòng import lại hoặc gắn file (📎).');
+        updatePlayButton(false);
       }
-    }).catch(err=>{ console.error(err); alert('Lỗi đọc IDB'); });
+    }).catch(err=>{ console.error(err); alert('Lỗi đọc IndexedDB'); updatePlayButton(false); });
     return;
   }
   alert('Track chỉ lưu metadata. Hãy bấm 📎 để thêm file tương ứng (chỉ cần 1 lần).');
+  updatePlayButton(false);
 }
 
 // prev / next
-function playNext(){ if(idx < queue.length-1){ idx++; playById(queue[idx]); } else if(repeatMode==='all'){ idx=0; playById(queue[idx]); } else { audio.pause(); playBtn.textContent='▶️'; barPlay.textContent='▶️'; } }
+function playNext(){
+    if (shuffleMode && queue.length > 0) {
+        idx = (idx + 1) % queue.length;
+        playById(queue[idx]);
+        return;
+    }
+    if(idx < queue.length-1){
+        idx++;
+        playById(queue[idx]);
+    } else if(repeatMode==='all' && queue.length > 0){
+        idx=0;
+        playById(queue[idx]);
+    } else {
+        audio.pause();
+        updatePlayButton(false);
+    }
+}
 function playPrev(){ if(idx>0){ idx--; playById(queue[idx]); } }
 
 // audio events
@@ -499,18 +568,57 @@ seek.addEventListener('input', e=>{ if(audio.duration) audio.currentTime = (e.ta
 barSeek.addEventListener('input', e=>{ if(audio.duration) audio.currentTime = (e.target.value/100)*audio.duration; });
 
 audio.addEventListener('ended', ()=>{ if(repeatMode==='one'){ audio.currentTime=0; audio.play(); } else playNext(); });
+audio.addEventListener('pause', ()=> updatePlayButton(false));
+audio.addEventListener('play', ()=> updatePlayButton(true));
 
 // play/pause
-playBtn.addEventListener('click', ()=>{ if(!audio.src){ if(queue.length) playById(queue[0]); return; } if(audio.paused){ audio.play(); playBtn.textContent='⏸ Pause'; barPlay.textContent='⏸'; } else { audio.pause(); playBtn.textContent='▶️'; barPlay.textContent='▶️'; } });
+playBtn.addEventListener('click', ()=>{
+    if(!audio.src){
+        if(queue.length > 0) playById(queue[0]);
+        return;
+    }
+    if(audio.paused){
+        audio.play().catch(e => console.error("Play failed:", e));
+    } else {
+        audio.pause();
+    }
+});
 barPlay.addEventListener('click', ()=>{ playBtn.click(); });
 prevBtn.addEventListener('click', playPrev); barPrev.addEventListener('click', playPrev);
 nextBtn.addEventListener('click', playNext); barNext.addEventListener('click', playNext);
 
 // shuffle / repeat
-shuffleBtn.addEventListener('click', ()=>{ shuffleMode = !shuffleMode; queue = shuffleMode ? shuffleArray(tracks.map(t=>t.id)) : tracks.map(t=>t.id); shuffleBtn.textContent = shuffleMode ? '🔀 ON' : '🔀 Shuffle'; });
-repeatBtn.addEventListener('click', ()=>{ repeatMode = repeatMode==='off'?'one':(repeatMode==='one'?'all':'off'); repeatBtn.textContent = `🔁 Repeat: ${repeatMode}`; });
+shuffleBtn.addEventListener('click', ()=>{
+    shuffleMode = !shuffleMode;
+    if (shuffleMode) {
+        queue = shuffleArray(tracks.map(t=>t.id));
+        if (idx !== -1) { // Đặt bài hiện tại về đầu queue shuffle
+            const currentId = tracks[idx] ? tracks[idx].id : null;
+            if (currentId) {
+                queue = [currentId, ...queue.filter(id => id !== currentId)];
+                idx = 0;
+            }
+        }
+    } else {
+        queue = tracks.map(t=>t.id);
+        if (idx !== -1) idx = queue.indexOf(tracks[idx].id);
+    }
+    shuffleBtn.textContent = shuffleMode ? '🔀 ON' : '🔀 Shuffle';
+});
+repeatBtn.addEventListener('click', ()=>{
+    repeatMode = repeatMode==='off'?'one':(repeatMode==='one'?'all':'off');
+    updateStorageUI(); // Cập nhật text nút
+});
 
-// ---------- Attach file to metadata (📎) ----------
+// ---------- Gắn file & Offline Save Toggle ----------
+// Toggle Save Files
+toggleSaveFiles.addEventListener('click', ()=>{
+    saveFilesOffline = !saveFilesOffline;
+    localStorage.setItem('saveFilesOffline', saveFilesOffline ? '1' : '0');
+    updateStorageUI();
+    alert(`Tự động lưu file ngoại tuyến: ${saveFilesOffline ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}`);
+});
+
 function attachFileToMeta(id){
   const fi = document.createElement('input'); fi.type='file'; fi.accept='audio/*';
   fi.onchange = async e=>{
@@ -519,10 +627,31 @@ function attachFileToMeta(id){
     if(runtimeFiles.has(id)){ const old = runtimeFiles.get(id); try{ URL.revokeObjectURL(old.url);}catch(e){} }
     const url = URL.createObjectURL(f);
     runtimeFiles.set(id,{file:f,url});
+    
+    const t = tracks.find(x=>x.id===id);
+    if(t) {
+        // Nếu file có tên khác, cập nhật
+        if (t.name !== f.name) t.name = f.name;
+        t.size = f.size;
+        t.type = f.type;
+    }
+
     // if saveFilesOffline on, store to IDB automatically
-    if(saveFilesOffline){ await idbPut(id, f, {name:f.name,type:f.type,size:f.size}); const t = tracks.find(x=>x.id===id); if(t){ t.saved = true; saveMeta(); updateStorageUI(); } }
+    if(saveFilesOffline){
+        try {
+            await idbPut(id, f, {name:f.name,type:f.type,size:f.size});
+            if(t){ t.saved = true; }
+            saveMeta();
+            updateStorageUI();
+            alert('File đã gắn và lưu offline thành công.');
+        } catch(e) {
+            console.warn('idb put err', e);
+            alert('File đã gắn tạm thời nhưng không thể lưu offline.');
+        }
+    } else {
+        alert('File đã gắn với metadata (tạm thời). Reload trang sẽ mất file này trừ khi bạn Export/Save offline.');
+    }
     renderPlaylist(searchInput.value);
-    alert('File đã gắn với metadata (tạm thời). Reload trang sẽ mất file này trừ khi bạn Export/Save offline.');
   };
   fi.click();
 }
@@ -540,18 +669,26 @@ async function downloadTrack(id){
     const a = document.createElement('a'); a.href = url; a.download = tracks.find(t=>t.id===id).name; a.click(); URL.revokeObjectURL(url);
     return;
   }
-  alert('Không có file để tải. Hãy thêm file (📎) hoặc Export playlist đầy đủ.');
+  alert('Không có file thực tế để tải. Hãy gắn file (📎) hoặc lưu offline.');
 }
 
 // ---------- Remove track ----------
 async function removeTrack(id){
+  // stop playing if it's the current track
+  const currentId = tracks[idx] ? tracks[idx].id : null;
+  if(currentId === id) audio.pause();
+
   // remove runtime url
   if(runtimeFiles.has(id)){ const r = runtimeFiles.get(id); try{ URL.revokeObjectURL(r.url);}catch(e){} runtimeFiles.delete(id); }
   // remove saved IDB
   try{ await idbDelete(id); }catch(e){}
   tracks = tracks.filter(t=>t.id!==id);
   queue = tracks.map(t=>t.id);
+  if(shuffleMode) queue = shuffleArray(tracks.map(t=>t.id));
+
   if(idx>=tracks.length) idx = tracks.length-1;
+  if(idx < 0) setNowUI(null);
+
   saveMeta(); renderPlaylist(searchInput.value); updateStorageUI();
 }
 
@@ -588,6 +725,8 @@ async function handleFiles(fileList){
     if(saveFilesOffline){ try{ await idbPut(id,f,{name:f.name,type:f.type,size:f.size}); tmeta.saved = true; }catch(e){ console.warn('idb put err', e); } }
   }
   queue = tracks.map(t=>t.id);
+  if(shuffleMode) queue = shuffleArray(tracks.map(t=>t.id));
+
   saveMeta(); renderPlaylist(searchInput.value); updateStorageUI();
 }
 
@@ -599,9 +738,10 @@ coverInput.addEventListener('change', async e=>{
     const base = reader.result;
     // set cover for last added track(s) — apply to tracks that don't have cover
     for(let i=tracks.length-1;i>=0;i--){
-      if(!tracks[i].coverBase64){ tracks[i].coverBase64 = base; break; }
+      if(!tracks[i].coverBase64){ tracks[i].coverBase64 = base; } // Bỏ 'break' để áp dụng cho tất cả các track MỚI CHƯA CÓ cover
     }
     saveMeta(); renderPlaylist(searchInput.value);
+    alert('Cover đã được áp dụng cho các track mới nhất chưa có cover.');
   };
   reader.readAsDataURL(f);
   coverInput.value='';
@@ -650,17 +790,18 @@ importBtn.addEventListener('click', ()=>{
         }
       }
       queue = tracks.map(t=>t.id);
+      if(shuffleMode) queue = shuffleArray(tracks.map(t=>t.id));
       saveMeta(); renderPlaylist(searchInput.value); updateStorageUI();
-      alert('Import xong!');
-    }catch(err){ console.error(err); alert('Import lỗi'); }
+      alert(`Import thành công ${p.tracks.length} track!`);
+    }catch(err){ console.error(err); alert('Import lỗi. File JSON không hợp lệ.'); }
   };
   fi.click();
 });
 
 // ---------- Save all / remove saved ----------
 saveAllBtn.addEventListener('click', async ()=>{
-  if(tracks.length===0){ alert('No tracks'); return; }
-  if(!confirm('Lưu tất cả file runtime vào IndexedDB (tốn dung lượng). Tiếp tục?')) return;
+  if(tracks.length===0){ alert('Chưa có track nào'); return; }
+  if(!confirm('Lưu tất cả file runtime (đã gắn) vào IndexedDB (tốn dung lượng). Tiếp tục?')) return;
   for(const t of tracks){
     try{
       let blob = null;
@@ -670,17 +811,17 @@ saveAllBtn.addEventListener('click', async ()=>{
         if(rec && rec.blob) blob = rec.blob;
       }
       if(blob){ await idbPut(t.id, blob, {name:t.name,type:t.type,size:t.size}); t.saved = true; }
-    }catch(e){ console.warn('saveAll err', e); }
+    }catch(e){ console.warn('saveAll err', e); alert(`Lỗi lưu file ${t.name}: ${e.message}`); }
   }
-  saveMeta(); updateStorageUI(); alert('Save all finished');
+  saveMeta(); updateStorageUI(); alert('Đã lưu tất cả file thành công!');
 });
 
 removeAllSavedBtn.addEventListener('click', async ()=>{
-  if(!confirm('Xóa tất cả file đã lưu trong IndexedDB?')) return;
+  if(!confirm('Xóa tất cả file đã lưu trong IndexedDB (chỉ xóa file, không xóa metadata)?')) return;
   await idbClear();
   for(const t of tracks) t.saved = false;
   saveMeta(); updateStorageUI();
-  alert('Đã xóa');
+  alert('Đã xóa tất cả file lưu offline.');
 });
 
 // ---------- Download all (zip) ----------
@@ -688,20 +829,25 @@ downloadAllBtn.addEventListener('click', async ()=>{
   // collect blobs
   const files = [];
   for(const t of tracks){
-    if(runtimeFiles.has(t.id)) files.push({name:t.name,file:runtimeFiles.get(t.id).file});
+    let file = null;
+    if(runtimeFiles.has(t.id)) file = runtimeFiles.get(t.id).file;
     else {
       const rec = await idbGet(t.id);
-      if(rec && rec.blob) files.push({name:t.name,file:rec.blob});
+      if(rec && rec.blob) file = rec.blob;
     }
+    if (file) files.push({name:t.name,file:file});
   }
+
   if(files.length===0){ alert('Không có file thực tế để tải. Hãy gắn file hoặc lưu offline.'); return; }
+
   if(window.JSZip){
     const zip = new JSZip();
     files.forEach(f=> zip.file(f.name, f.file));
     const content = await zip.generateAsync({type:'blob'});
     const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = 'yuung_tracks.zip'; a.click();
+    URL.revokeObjectURL(a.href);
   } else {
-    if(!confirm('JSZip chưa được tải. Sẽ tải từng file một. OK?')) return;
+    if(!confirm('JSZip chưa được tải. Sẽ tải từng file một (có thể lâu). OK?')) return;
     for(const f of files){
       const url = URL.createObjectURL(f.file);
       const a = document.createElement('a'); a.href = url; a.download = f.name; a.click();
@@ -712,139 +858,54 @@ downloadAllBtn.addEventListener('click', async ()=>{
 
 // ---------- Remove all tracks ----------
 clearBtn.addEventListener('click', async ()=>{
-  if(!confirm('Xóa toàn bộ playlist?')) return;
+  if(!confirm('Xóa toàn bộ playlist và file lưu (metadata và file IDB)?')) return;
+  audio.pause(); audio.src = '';
   runtimeFiles.forEach(r=>{ try{ URL.revokeObjectURL(r.url);}catch(e){} });
   runtimeFiles.clear();
   tracks=[]; queue=[]; idx=-1;
   await idbClear();
-  saveMeta(); renderPlaylist(); updateStorageUI();
+  saveMeta(); renderPlaylist(); updateStorageUI(); setNowUI(null);
+  alert('Đã xóa toàn bộ playlist và file lưu.');
 });
 
-// ---------- UI helpers ----------
-function initials(name){ return name.replace(/\.\w+$/,'').split(/[\s-_]+/).slice(0,2).map(s=>s[0]).join('').toUpperCase() || '♪'; }
-function gradientFromString(s){ let h=0; for(let i=0;i<s.length;i++) h = s.charCodeAt(i) + ((h<<5)-h); const a = `hsl(${Math.abs(h)%360} 70% 45%)`, b = `hsl(${(Math.abs(h)+60)%360} 70% 60%)`; return `linear-gradient(135deg, ${a}, ${b})`;}
-function shuffleArray(a){ const arr=[...a]; for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
-function arrayBufferToBase64(buffer){ let binary=''; const bytes=new Uint8Array(buffer); for(let i=0;i<bytes.byteLength;i++) binary+=String.fromCharCode(bytes[i]); return btoa(binary); }
-function blobToBase64(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=> res(r.result.split(',')[1]); r.onerror=()=> rej(r.error); r.readAsDataURL(file); }); }
-function base64ToBlob(b64, type){ const bin = atob(b64); let len = bin.length; const u8 = new Uint8Array(len); for(let i=0;i<len;i++) u8[i]=bin.charCodeAt(i); return new Blob([u8],{type:type||'application/octet-stream'}); }
+// ---------- PWA Installation (Placeholder) ----------
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.style.display = 'inline-block';
+  installBtn.addEventListener('click', () => {
+    installBtn.style.display = 'none';
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then((choiceResult) => {
+      console.log('User choice', choiceResult.outcome);
+      deferredPrompt = null;
+    });
+  });
+});
+if (!window.matchMedia('(display-mode: standalone)').matches) {
+    installBtn.style.display = 'inline-block';
+} else {
+    installBtn.style.display = 'none';
+}
 
-// ---------- Attach event: search ----------
+
+// ---------- Initialization ----------
+loadMeta();
+updateStorageUI();
+renderPlaylist(searchInput.value);
+
+// Attach event: search
 searchInput.addEventListener('input', ()=> renderPlaylist(searchInput.value));
 
-// ---------- Attach: attach temp cover to next added item (option) ----------
-addCoverBtn.addEventListener('click', ()=> coverInput.click());
+// Init seek bar values
+seek.value = 0;
+barSeek.value = 0;
 
-// ---------- Toggle save files -->
-toggleSaveFiles.addEventListener('click', ()=>{
-  saveFilesOffline = !saveFilesOffline;
-  toggleSaveFiles.textContent = `💾 Save offline: ${saveFilesOffline ? 'On' : 'Off'}`;
-});
-
-// ---------- Attach install + theme ----------
-let deferredPrompt = null;
-window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredPrompt = e; installBtn.style.display='inline-block'; });
-installBtn.addEventListener('click', async ()=>{ if(!deferredPrompt) return alert('Không có prompt'); deferredPrompt.prompt(); const choice = await deferredPrompt.userChoice; deferredPrompt=null; installBtn.style.display='none'; });
-
-themeToggle.addEventListener('click', ()=>{
-  const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'dark' : 'light';
-  const next = cur==='dark'?'light':'dark';
-  if(next==='dark') document.documentElement.setAttribute('data-theme','dark'); else document.documentElement.removeAttribute('data-theme');
-  localStorage.setItem('yuung_theme', next);
-});
-if(localStorage.getItem('yuung_theme')==='dark') document.documentElement.setAttribute('data-theme','dark');
-
-// ---------- Update storage UI ----------
-async function updateStorageUI(){
-  const savedCount = await idbCount().catch(()=>0);
-  storageStatus.textContent = `Offline files: ${savedCount}`;
-  idbUsage.textContent = `IDB: ${savedCount} files`;
-}
+// Update UI on load
 updateStorageUI();
 
-// ---------- save metadata on unload (debounced) ----------
-let saveTimeout=null;
-function scheduleSaveMeta(){ if(saveTimeout) clearTimeout(saveTimeout); saveTimeout = setTimeout(()=>{ saveMeta(); },400); }
-
-// ---------- Load initial metadata and runtime blobs from IDB (if any) ----------
-loadMeta();
-(async function loadSavedBlobs(){
-  // for tracks marked saved=true, try to attach runtime blob URL so play can work immediately offline
-  for(const t of tracks){
-    if(t.saved){
-      try{
-        const rec = await idbGet(t.id);
-        if(rec && rec.blob){
-          const url = URL.createObjectURL(rec.blob);
-          runtimeFiles.set(t.id,{file:rec.blob,url});
-        } else t.saved = false;
-      }catch(e){ console.warn('loadSaved err', e); t.saved=false; }
-    }
-  }
-  queue = tracks.map(t=>t.id);
-  renderPlaylist(); updateStorageUI();
-})();
-
-// ---------- Try load JSZip for zipping (optional) ----------
-(function tryLoadZip(){
-  const s = document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js'; s.onload=()=>console.log('JSZip loaded'); s.onerror=()=>console.log('JSZip not loaded'); document.head.appendChild(s);
-})();
-
-// ---------- Utility: download track by id helper (used earlier) ----------
-// included above
-
-// ---------- PWA: manifest + service worker registration (blob) ----------
-try{
-  const manifest = {
-    name: "Yuung Playlist",
-    short_name: "Yuung",
-    start_url: ".",
-    display: "standalone",
-    background_color: "#0b7fa8",
-    theme_color: "#0b7fa8",
-    icons: [
-      { src: "data:image/svg+xml;base64," + btoa(`<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192'><rect rx='24' width='100%' height='100%' fill='#0b7fa8'/><text x='50%' y='55%' font-size='72' text-anchor='middle' fill='white'>🎧</text></svg>`), sizes: "192x192", type: "image/svg+xml" }
-    ]
-  };
-  const mblob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
-  const murl = URL.createObjectURL(mblob);
-  const l = document.createElement('link'); l.rel='manifest'; l.href = murl; document.head.appendChild(l);
-}catch(e){ console.warn('manifest err', e); }
-
-if('serviceWorker' in navigator){
-  const swCode = `
-    const CACHE = 'yuung-offline-v4';
-    const OFFLINE = ['./','./index.html'];
-    self.addEventListener('install', evt => {
-      self.skipWaiting();
-      evt.waitUntil(caches.open(CACHE).then(c=>c.addAll(OFFLINE)).catch(()=>{}));
-    });
-    self.addEventListener('activate', evt => { evt.waitUntil(self.clients.claim()); });
-    self.addEventListener('fetch', evt => {
-      evt.respondWith(caches.match(evt.request).then(r=> r || fetch(evt.request).catch(()=> caches.match('./'))));
-    });
-  `;
-  try{
-    const blob = new Blob([swCode], {type:'application/javascript'});
-    const url = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(url).then(reg=>console.log('SW registered (blob)')).catch(async err=>{
-      console.warn('blob sw failed', err);
-      try{ await navigator.serviceWorker.register('/service-worker.js'); console.log('registered /service-worker.js'); }catch(e){ console.warn('fallback sw failed', e); }
-    });
-  }catch(e){ console.warn('sw create err', e); }
-}
-
-// ---------- helpers to convert FileReader / base64 ----------
-function arrayBufferToBase64Local(buffer){ let binary=''; const bytes=new Uint8Array(buffer); for(let i=0;i<bytes.byteLength;i++) binary+=String.fromCharCode(bytes[i]); return btoa(binary); }
-function blobToBase64Local(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=> res(r.result.split(',')[1]); r.onerror=()=> rej(r.error); r.readAsDataURL(file); }); }
-
-// ---------- Boot: render list ----------
-renderPlaylist();
-
-// ---------- small helper: auto-save schedule whenever tracks change ----------
-const originalPush = [].push;
-function tracksChanged(){ saveMeta(); updateStorageUI(); renderPlaylist(searchInput.value); }
-
-})(); // end IIFE
+})(); // End IIFE
 </script>
 </body>
 </html>
