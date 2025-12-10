@@ -18,7 +18,7 @@
     --bg1: #0e0e0e; /* Nền tối */
     --bg2: #1a1a1a; /* Nền tối hơn */
     --card: #1f1f1f; /* Nền card tối */
-    --text: #ffffff; /* SỬA: Màu chữ chính phải là biến --text */
+    --text: #ffffff; /* SỬA LỖI: Màu chữ chính phải là biến --text */
     --muted: #aaaaaa;
     --shadow: 0 8px 30px rgba(0,0,0,0.6);
     --glass: rgba(31, 31, 31, 0.7); /* Glassmorphism tối */
@@ -152,7 +152,7 @@
       <div class="subtitle">Offline-ready · PWA · Dark mode · Thumbnails · IndexedDB save</div>
     </div>
     <div style="display:flex;gap:8px">
-      <button id="themeToggle" class="btn">🌙</button>
+      <button id="themeToggle" class="btn" onclick="toggleDarkMode()">🌙</button>
       <button id="installBtn" class="btn">📲 Install</button>
     </div>
   </header>
@@ -244,6 +244,7 @@
   <div style="flex:1">
     <div id="barTitle" style="font-weight:700">—</div>
     <div id="barSub" class="small-muted">—</div>
+    <audio id="barAudio" controls style="display:none;"></audio>
   </div>
   <div class="player-controls">
     <button id="barPrev" class="btn">⏮</button>
@@ -257,6 +258,7 @@
 </div>
 
 <script>
+// --- Dark Mode Toggle Function ---
 function toggleDarkMode() {
     document.documentElement.classList.toggle("dark-mode");
     localStorage.setItem("darkMode", document.documentElement.classList.contains("dark-mode") ? "1" : "0");
@@ -265,9 +267,9 @@ function toggleDarkMode() {
 if (localStorage.getItem("darkMode") === "1") {
     document.documentElement.classList.add("dark-mode");
 }
-  /* ===================================================
+
+/* ===================================================
    FULL APP SCRIPT
-   - Thêm logic UI/UX cho CSS đã thay đổi
    =================================================== */
 
 (async()=>{ // IIFE to keep scope
@@ -431,7 +433,7 @@ function renderPlaylist(filter=''){
         info.appendChild(title); info.appendChild(sub);
 
         const actions = document.createElement('div'); actions.className='t-actions';
-        const play = document.createElement('button'); play.className='btn'; play.textContent='▶️'; play.onclick = ()=> playById(t.id);
+        const play = document.createElement('button'); play.className='btn'; play.textContent='▶️'; play.onclick = (e)=> { e.stopPropagation(); playById(t.id); };
         const attach = document.createElement('button'); attach.className='btn'; attach.textContent='📎'; attach.title='Thêm file (nếu chỉ lưu metadata)';
         attach.onclick = (e)=> { e.stopPropagation(); attachFileToMeta(t.id); };
         const dl = document.createElement('button'); dl.className='btn'; dl.textContent='🔗'; dl.onclick = (e)=> { e.stopPropagation(); downloadTrack(t.id); };
@@ -490,7 +492,7 @@ function playById(id){
 }
 
 // prev / next
-function playNext(){ if(idx < queue.length-1){ idx++; playById(queue[idx]); } else if(repeatMode==='all'){ idx=0; playById(queue[idx]); } else { audio.pause(); playBtn.textContent='▶️'; barPlay.textContent='▶️'; setNowUI(tracks.find(t=>t.id===queue[idx])); } }
+function playNext(){ if(idx < queue.length-1){ idx++; playById(queue[idx]); } else if(repeatMode==='all' && queue.length > 0){ idx=0; playById(queue[idx]); } else { audio.pause(); playBtn.textContent='▶️'; barPlay.textContent='▶️'; setNowUI(tracks.find(t=>t.id===queue[idx]) || null); } }
 function playPrev(){ if(idx>0){ idx--; playById(queue[idx]); } }
 
 // audio events
@@ -765,6 +767,13 @@ loadMeta();
 updateStorageUI();
 renderPlaylist();
 setNowUI(null);
+
+// Try loading JSZip for download all functionality if not already present (optional)
+if (typeof JSZip === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    document.head.appendChild(script);
+}
 
 })(); // End IIFE
 </script>
