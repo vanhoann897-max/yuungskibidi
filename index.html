@@ -3,16 +3,19 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
-<title>Yuung— Optimized</title>
+<title>Yuung — Cloud Sync</title>
 <meta name="theme-color" content="#0b7fa8" id="metaThemeColor">
 
 <script src="https://unpkg.com/jsmediatags@3.9.5/dist/jsmediatags.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
 <style>
-    /* ============================
-       CSS VARIABLES & THEME
-       ============================ */
+    /* CSS VARIABLES */
     :root{
       --bg1: #f0fbff; --bg2: #e6f9ff;
       --card: #ffffff; --muted: #6b8b92; --text: #043242;
@@ -33,7 +36,7 @@
     
     /* UTILS */
     .wrap{max-width:1100px;margin:0 auto;padding:18px;padding-bottom:120px;}
-    .btn{background:var(--card);border:0;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);font-size:14px;color:var(--text);transition:all .2s; user-select: none;}
+    .btn{background:var(--card);border:0;padding:10px 14px;border-radius:12px;cursor:pointer;box-shadow:var(--shadow);font-size:14px;color:var(--text);transition:all .2s; user-select: none; display:inline-flex; align-items:center; gap:6px;}
     .btn:hover{transform:translateY(-2px);filter:brightness(1.1);}
     .btn:active{transform:scale(0.96);}
     .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:white;font-weight:700;}
@@ -41,6 +44,8 @@
     /* HEADER */
     header{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--radius);background:var(--card);box-shadow:var(--shadow);}
     .logo{width:50px;height:50px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;color:white;font-size:24px;}
+    .user-section { margin-left: auto; display:flex; gap: 10px; align-items:center; }
+    .avatar {width:32px; height:32px; border-radius:50%; background:#ccc; object-fit:cover; display:none;}
 
     /* LAYOUT GRID */
     .grid{display:grid;grid-template-columns:360px 1fr;gap:20px;margin-top:20px;}
@@ -51,11 +56,12 @@
     .cover-container{position:relative; width:100%; height:320px; border-radius:12px; overflow:hidden; box-shadow:0 10px 20px rgba(0,0,0,0.2); background: #000;}
     .cover{width:100%;height:100%;object-fit:cover;background:#222;display:flex;align-items:center;justify-content:center;font-size:40px;color:#fff;}
     
-    /* VISUALIZER CANVAS */
-    #visualizer{
-        position: absolute; bottom:0; left:0; width:100%; height:100px;
-        z-index: 2; pointer-events: none; opacity: 0.8;
-    }
+    /* VISUALIZER */
+    #visualizer{position: absolute; bottom:0; left:0; width:100%; height:100px; z-index: 2; pointer-events: none; opacity: 0.8;}
+
+    /* URL INPUT GROUP */
+    .url-group { display:flex; gap:8px; margin-top:15px; background: var(--card); padding:8px; border-radius:12px; box-shadow: var(--shadow); }
+    .url-input { flex:1; border:none; background:transparent; font-size:14px; color:var(--text); padding:0 8px; }
 
     /* PLAYLIST TRACKS */
     .playlist{display:flex;flex-direction:column;gap:10px; margin-top:10px;}
@@ -70,8 +76,7 @@
     /* INPUTS */
     input[type=range]{-webkit-appearance:none;width:100%;height:6px;background:rgba(128,128,128,0.3);border-radius:4px;cursor:pointer;}
     input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--accent);border-radius:50%;transition:transform .1s;}
-    input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);}
-
+    
     /* BOTTOM PLAYER */
     .player-bar{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);width:95%;max-width:1100px;background:rgba(20,20,20,0.95);backdrop-filter:blur(10px);padding:10px 12px;border-radius:16px;display:flex;align-items:center;gap:12px;color:white;z-index:100;box-shadow:0 10px 30px rgba(0,0,0,0.5);}
     [data-theme="light"] .player-bar{background:rgba(255,255,255,0.95);color:#333; border: 1px solid #eee;}
@@ -80,13 +85,15 @@
     .bar-ctrls{display:flex;gap:8px;}
     @media(max-width:600px){ .bar-time, .hide-mobile{display:none;} .player-bar{bottom:10px; width:96%; padding:10px;} }
 
-    /* LOADING OVERLAY */
-    #loader{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);color:white;display:flex;flex-direction: column;gap: 10px; align-items:center;justify-content:center;z-index:999;font-size:18px;display:none;}
+    /* LOADER & MODAL */
+    #loader{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);color:white;display:flex;flex-direction: column;gap: 10px; align-items:center;justify-content:center;z-index:999;font-size:16px;display:none;}
     .spinner {width: 40px;height: 40px;border: 4px solid #f3f3f3;border-top: 4px solid var(--accent);border-radius: 50%;animation: spin 1s linear infinite;}
     @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
+    
+    /* PROGRESS BAR FOR UPLOAD */
+    #progressWrap { width: 300px; height: 10px; background: #333; border-radius: 5px; overflow: hidden; display: none; margin-top: 10px;}
+    #progressBar { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s; }
 
-    /* PERFORMANCE TOGGLE */
-    .switch-wrap{display:flex; align-items:center; gap:8px; font-size:13px; margin-top:10px; justify-content: center;}
 </style>
 </head>
 <body>
@@ -94,33 +101,37 @@
 <div id="loader">
     <div class="spinner"></div>
     <div id="loaderText">Đang xử lý...</div>
+    <div id="progressWrap"><div id="progressBar"></div></div>
 </div>
 
 <div class="wrap">
   <header>
-    <div class="logo">🎵</div>
+    <div class="logo">☁️</div>
     <div style="flex:1">
-      <h2 style="margin:0; font-size: 20px;">Yuung Player V2.1</h2>
-      <div style="font-size:12px;opacity:0.7">Optimized · Low Latency</div>
+      <h2 style="margin:0; font-size: 20px;">Yuung V3.0</h2>
+      <div style="font-size:12px;opacity:0.7">Cloud Sync & Download</div>
     </div>
-    <button class="btn" onclick="toggleTheme()">🌓</button>
+    
+    <div class="user-section">
+        <img id="userAvatar" class="avatar">
+        <button id="loginBtn" class="btn primary">🔑 Đăng nhập</button>
+        <button id="syncBtn" class="btn" style="display:none">🔄 Đồng bộ</button>
+        <button id="logoutBtn" class="btn" style="display:none">🚪</button>
+        <button class="btn" onclick="toggleTheme()">🌓</button>
+    </div>
   </header>
 
+  <div class="url-group">
+      <input id="urlInput" class="url-input" placeholder="Dán link YouTube/Spotify vào đây (Cần API)...">
+      <button class="btn primary" onclick="processUrl()">⬇️ Tải về</button>
+  </div>
+
   <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:15px">
-    <label class="btn primary">
-        ➕ Thêm Nhạc
+    <label class="btn">
+        ➕ File Máy
         <input type="file" id="fileInput" accept="audio/*" multiple hidden>
     </label>
-    <label class="btn">
-        🖼️ Set Cover
-        <input type="file" id="coverInput" accept="image/*" hidden>
-    </label>
-    <div style="flex:1"></div>
-    <button class="btn" id="zipExportBtn">📦 Export</button>
-    <label class="btn">
-        📥 Import
-        <input type="file" id="importInput" accept=".zip" hidden>
-    </label>
+    <button class="btn" id="zipExportBtn">📦 Backup Zip</button>
   </div>
 
   <div class="grid">
@@ -131,9 +142,9 @@
            <canvas id="visualizer" width="360" height="100"></canvas>
         </div>
 
-        <div class="switch-wrap">
-            <input type="checkbox" id="vizToggle" checked onchange="toggleVisualizer(this.checked)">
-            <label for="vizToggle">Bật Sóng Nhạc (Tắt nếu lag)</label>
+        <div style="display:flex; justify-content:center; gap:10px; margin-top:10px">
+             <input type="checkbox" id="vizToggle" checked onchange="toggleVisualizer(this.checked)">
+             <label for="vizToggle" style="font-size:12px">Sóng Nhạc</label>
         </div>
 
         <div style="text-align:center; margin-top:10px;">
@@ -148,26 +159,20 @@
         </div>
 
         <div style="display:flex; justify-content:center; align-items:center; gap:20px; margin-top:20px">
-           <button class="btn" id="prevBtn" style="width:50px">⏮</button>
-           <button class="btn primary" id="playBtn" style="width:60px; height:60px; font-size:24px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center">▶️</button>
-           <button class="btn" id="nextBtn" style="width:50px">⏭</button>
+           <button class="btn" id="prevBtn">⏮</button>
+           <button class="btn primary" id="playBtn" style="width:60px; height:60px; font-size:24px; border-radius:50%; justify-content:center">▶️</button>
+           <button class="btn" id="nextBtn">⏭</button>
         </div>
-
+        
         <div style="display:flex; justify-content:space-between; margin-top:20px">
             <button class="btn" id="shuffleBtn">🔀 Off</button>
             <button class="btn" id="repeatBtn">🔁 Off</button>
-            <button class="btn" onclick="clearAllData()" style="color:var(--accent)">🗑️ Reset</button>
+            <button class="btn" onclick="clearAllData()" style="color:var(--accent)">🗑️ Xóa hết</button>
         </div>
       </div>
-
+      
       <div class="card" style="margin-top:20px">
-        <div style="display:flex; justify-content:space-between; align-items:center">
-             <b>Trạng thái lưu trữ</b>
-             <span id="storageStatus" style="font-size:12px">Checking...</span>
-        </div>
-        <div style="margin-top:8px; font-size:11px; opacity:0.7; line-height: 1.4;">
-            Nhạc được lưu trong trình duyệt. Nếu máy yếu, hãy tắt "Sóng Nhạc" để mượt hơn.
-        </div>
+          <b>Trạng thái:</b> <span id="storageStatus">Checking...</span>
       </div>
     </div>
 
@@ -181,40 +186,60 @@
 <div class="player-bar" id="playerBar" style="display:none">
    <div id="barCover" class="bar-cover" style="background:#777; display:flex; align-items:center; justify-content:center">🎵</div>
    <div class="bar-info">
-      <div id="barTitle" style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size: 14px;">Title</div>
-      <div id="barArtist" style="font-size:11px; opacity:0.8">Yuung Player</div>
+      <div id="barTitle" style="font-weight:bold; font-size: 14px;">Title</div>
+      <div id="barArtist" style="font-size:11px;">Yuung Player</div>
    </div>
    <div class="bar-ctrls">
-      <button class="btn" id="barPrev" style="padding:8px">⏮</button>
-      <button class="btn primary" id="barPlay" style="padding:8px 14px">▶️</button>
-      <button class="btn" id="barNext" style="padding:8px">⏭</button>
+      <button class="btn" id="barPrev">⏮</button>
+      <button class="btn primary" id="barPlay">▶️</button>
+      <button class="btn" id="barNext">⏭</button>
    </div>
 </div>
 
 <script>
 /* =========================================
-   CORE LOGIC - V2.1 OPTIMIZED
+   1. FIREBASE CONFIGURATION (BẠN PHẢI THAY ĐỔI PHẦN NÀY)
    ========================================= */
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY_HERE",           // <--- THAY BẰNG KEY CỦA BẠN
+    authDomain: "YOUR_PROJECT.firebaseapp.com", // <--- THAY
+    projectId: "YOUR_PROJECT_ID",          // <--- THAY
+    storageBucket: "YOUR_PROJECT.appspot.com", // <--- THAY
+    messagingSenderId: "...",
+    appId: "..."
+};
 
-// --- 1. CONFIG & STATE ---
-const DB_NAME = 'yuung_db_v2';
+// Khởi tạo Firebase nếu có Config
+let auth, db, storage;
+let currentUser = null;
+try {
+    if(firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+        firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        storage = firebase.storage();
+        console.log("Firebase Connected");
+    } else {
+        console.warn("Chưa cấu hình Firebase! Tính năng Cloud sẽ không hoạt động.");
+    }
+} catch(e){ console.error(e); }
+
+/* =========================================
+   2. CORE VARIABLES & INDEXED DB
+   ========================================= */
+const DB_NAME = 'yuung_db_v3';
 const DB_STORE = 'files';
-const META_KEY = 'yuung_meta_v2';
+const META_KEY = 'yuung_meta_v3';
 
 let tracks = [];
 let queue = [];
 let audio = new Audio();
 let currentIndex = -1;
 let isShuffle = false;
-let repeatMode = 0; // 0:off, 1:all, 2:one
-let currentBlobUrl = null; // Track current blob to revoke it
+let repeatMode = 0;
+let currentBlobUrl = null;
 
-// Visualizer State
-let audioCtx, analyser, dataArray, sourceNode;
-let isVizOn = true;
-let animationId = null;
-
-// --- 2. INDEXED DB (Giữ nguyên logic cũ nhưng thêm check lỗi) ---
+// --- INDEXED DB ---
 const dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, 1);
     req.onupgradeneeded = e => {
@@ -259,490 +284,370 @@ async function clearDB() {
     tx.objectStore(DB_STORE).clear();
 }
 
-// --- 3. APP FUNCTIONS ---
-
+// --- HELPER FUNC ---
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 
-function loadMeta() {
-    try {
-        const raw = localStorage.getItem(META_KEY);
-        if (raw) {
-            tracks = JSON.parse(raw);
-            // Quick integrity check
-            if (!Array.isArray(tracks)) tracks = [];
-            queue = tracks.map(t => t.id);
-            renderPlaylist();
-            updateStorageStatus();
-        }
-    } catch(e) { console.error("Meta load error", e); }
-}
-
 function saveMeta() {
+    localStorage.setItem(META_KEY, JSON.stringify(tracks));
+    renderPlaylist();
+    document.getElementById('storageStatus').innerText = `Local: ${tracks.length} bài. Cloud: ${currentUser ? 'Ready' : 'Login required'}`;
+}
+
+function loadMeta() {
+    const raw = localStorage.getItem(META_KEY);
+    if (raw) {
+        tracks = JSON.parse(raw);
+        queue = tracks.map(t => t.id);
+        renderPlaylist();
+    }
+}
+
+// =========================================
+// 3. URL DOWNLOADER (Cần API)
+// =========================================
+async function processUrl() {
+    const url = document.getElementById('urlInput').value.trim();
+    if(!url) return alert("Vui lòng nhập link!");
+
+    showLoader(true, "Đang kết nối Server...");
+
+    // -----------------------------------------------------------
+    // LƯU Ý: Đây là đoạn code giả lập. Bạn cần thay thế fetch bên dưới
+    // bằng API Server của bạn (Vd: Nodejs server dùng ytdl-core)
+    // -----------------------------------------------------------
     try {
-        localStorage.setItem(META_KEY, JSON.stringify(tracks));
-        updateStorageStatus();
-    } catch(e) { alert("Bộ nhớ đầy! Hãy xóa bớt bài hát."); }
+        // Ví dụ: const res = await fetch('https://YOUR-API.com/download?url=' + url);
+        // const blob = await res.blob();
+        
+        // MÔ PHỎNG LỖI VÌ KHÔNG CÓ API THẬT
+        throw new Error("Chưa cấu hình API Server! Trình duyệt không thể tự tải YouTube/Spotify do chặn CORS. Bạn cần backend để làm điều này.");
+        
+        /* NẾU CÓ API, CODE SẼ CHẠY NHƯ SAU:
+        const id = uid();
+        await saveFileDB(id, blob); // Lưu vào DB
+        tracks.push({ id, name: "Downloaded Song", type: blob.type, size: blob.size, cover: null });
+        saveMeta();
+        alert("Tải thành công!");
+        */
+    } catch (e) {
+        alert("Lỗi: " + e.message);
+    } finally {
+        showLoader(false);
+    }
 }
 
-function updateStorageStatus() {
-    document.getElementById('storageStatus').innerText = `${tracks.length} bài đã lưu`;
+// =========================================
+// 4. CLOUD SYNC & AUTH (Logic cốt lõi)
+// =========================================
+
+// --- AUTH HANDLE ---
+document.getElementById('loginBtn').onclick = () => {
+    if(!auth) return alert("Chưa cấu hình Firebase Config trong code!");
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(e => alert(e.message));
+};
+
+document.getElementById('logoutBtn').onclick = () => auth.signOut();
+
+if(auth) {
+    auth.onAuthStateChanged(user => {
+        currentUser = user;
+        const loginBtn = document.getElementById('loginBtn');
+        const syncBtn = document.getElementById('syncBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const avatar = document.getElementById('userAvatar');
+
+        if(user) {
+            loginBtn.style.display = 'none';
+            syncBtn.style.display = 'inline-flex';
+            logoutBtn.style.display = 'inline-flex';
+            avatar.style.display = 'block';
+            avatar.src = user.photoURL;
+            document.getElementById('storageStatus').innerText = `Hi, ${user.displayName}`;
+        } else {
+            loginBtn.style.display = 'inline-flex';
+            syncBtn.style.display = 'none';
+            logoutBtn.style.display = 'none';
+            avatar.style.display = 'none';
+        }
+    });
 }
 
-// --- 4. VISUALIZER & AUDIO SYSTEM (OPTIMIZED) ---
+// --- SYNC HANDLE (Backup & Restore) ---
+document.getElementById('syncBtn').onclick = async () => {
+    if(!currentUser) return;
+    const choice = confirm("Chọn 'OK' để TẢI NHẠC TỪ CLOUD VỀ MÁY (Restore).\nChọn 'Cancel' để UP NHẠC TỪ MÁY LÊN CLOUD (Backup).");
+    
+    if(choice) {
+        // RESTORE: Cloud -> Local
+        await restoreFromCloud();
+    } else {
+        // BACKUP: Local -> Cloud
+        await backupToCloud();
+    }
+};
+
+async function backupToCloud() {
+    if(tracks.length === 0) return alert("Không có nhạc để backup!");
+    showLoader(true, "Đang chuẩn bị upload...");
+    
+    const userRef = db.collection('users').doc(currentUser.uid);
+    const storageRef = storage.ref().child(`users/${currentUser.uid}`);
+    
+    // 1. Upload Meta
+    await userRef.set({ tracks: tracks });
+    
+    // 2. Upload Files
+    let uploaded = 0;
+    const total = tracks.length;
+    
+    document.getElementById('progressWrap').style.display = 'block';
+    
+    for(const t of tracks) {
+        const blob = await getFileDB(t.id);
+        if(blob) {
+            const fileRef = storageRef.child(t.id);
+            // Check if exists to save bandwidth? (Skipped for simplicity)
+            await fileRef.put(blob);
+        }
+        uploaded++;
+        const pct = (uploaded/total)*100;
+        document.getElementById('progressBar').style.width = pct + '%';
+        document.getElementById('loaderText').innerText = `Đang upload: ${uploaded}/${total}`;
+    }
+    
+    showLoader(false);
+    alert("Backup hoàn tất!");
+}
+
+async function restoreFromCloud() {
+    showLoader(true, "Đang lấy dữ liệu Cloud...");
+    
+    try {
+        // 1. Get Meta
+        const doc = await db.collection('users').doc(currentUser.uid).get();
+        if(!doc.exists) throw new Error("Không tìm thấy dữ liệu trên Cloud!");
+        
+        const cloudTracks = doc.data().tracks || [];
+        const storageRef = storage.ref().child(`users/${currentUser.uid}`);
+        
+        document.getElementById('progressWrap').style.display = 'block';
+        let count = 0;
+        
+        // 2. Download Files
+        for(const t of cloudTracks) {
+            // Check if already in local
+            const existing = await getFileDB(t.id);
+            if(!existing) {
+                const url = await storageRef.child(t.id).getDownloadURL();
+                const res = await fetch(url);
+                const blob = await res.blob();
+                await saveFileDB(t.id, blob);
+            }
+            count++;
+            const pct = (count/cloudTracks.length)*100;
+            document.getElementById('progressBar').style.width = pct + '%';
+            document.getElementById('loaderText').innerText = `Đang tải về: ${count}/${cloudTracks.length}`;
+        }
+        
+        // Merge list
+        tracks = cloudTracks;
+        saveMeta();
+        location.reload();
+        
+    } catch(e) {
+        alert("Lỗi Restore: " + e.message);
+    } finally {
+        showLoader(false);
+    }
+}
+
+// =========================================
+// 5. BASIC AUDIO LOGIC
+// =========================================
+// (Giữ nguyên logic AudioContext và xử lý file từ phiên bản trước)
+let audioCtx, analyser, dataArray, sourceNode;
+let isVizOn = true; let animationId = null;
 
 function initAudioSystem() {
     if(!audioCtx) {
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        audioCtx = new AudioContext();
+        const AC = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AC();
     }
-    // Resume if suspended (common mobile issue)
-    if(audioCtx.state === 'suspended') {
-        audioCtx.resume();
-    }
-    
-    // Setup Analyser Node
+    if(audioCtx.state === 'suspended') audioCtx.resume();
     if(!analyser) {
         analyser = audioCtx.createAnalyser();
-        analyser.fftSize = 64; // Giảm từ 128 xuống 64 cho máy yếu (ít cột hơn, mượt hơn)
+        analyser.fftSize = 64;
         dataArray = new Uint8Array(analyser.frequencyBinCount);
     }
-
-    // Connect Source ONCE (Fix lỗi crash khi source đã tồn tại)
     if(!sourceNode) {
         try {
             sourceNode = audioCtx.createMediaElementSource(audio);
             sourceNode.connect(analyser);
             analyser.connect(audioCtx.destination);
-        } catch(e) { console.log("Source already connected or error:", e); }
+        } catch(e){}
     }
 }
 
-function toggleVisualizer(isOn) {
-    isVizOn = isOn;
-    if(isOn && !audio.paused) drawVisualizer();
-    else cancelAnimationFrame(animationId);
-}
-
+function toggleVisualizer(isOn) { isVizOn = isOn; if(isOn && !audio.paused) drawVisualizer(); }
 function drawVisualizer() {
-    if(!isVizOn || audio.paused) return; // Stop loop if paused/off
-
+    if(!isVizOn || audio.paused) return;
     animationId = requestAnimationFrame(drawVisualizer);
     analyser.getByteFrequencyData(dataArray);
-    
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    
+    const w = canvas.width; const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    
-    // Optimize: Reduce loop iterations
     const barWidth = (w / dataArray.length) * 2; 
     let x = 0;
-    
     for(let i = 0; i < dataArray.length; i++) {
         const v = dataArray[i]; 
         const barHeight = (v / 255) * h;
-        
         ctx.fillStyle = `rgba(${v + 50}, 150, 255, 0.8)`; 
         ctx.fillRect(x, h - barHeight, barWidth - 1, barHeight);
         x += barWidth;
     }
 }
 
-// --- 5. PLAYBACK LOGIC ---
-
+// Playback Control
 async function playTrack(id) {
-    // 1. Kích hoạt AudioContext (bắt buộc do browser policy)
-    try {
-        initAudioSystem();
-    } catch(e) { console.error("Audio Init Failed", e); }
-
+    try { initAudioSystem(); } catch(e){}
     const track = tracks.find(t => t.id === id);
     if (!track) return;
 
-    // 2. Memory Cleanup: Revoke URL cũ để tránh tràn RAM
-    if (currentBlobUrl) {
-        URL.revokeObjectURL(currentBlobUrl);
-        currentBlobUrl = null;
-    }
-
-    // 3. Load File
+    if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
     let blob = await getFileDB(id);
-    if (!blob) {
-        alert('Không tìm thấy file nhạc! Có thể đã bị xóa.');
-        return;
-    }
+    if (!blob) return alert('File lỗi hoặc chưa tải xong!');
 
     currentBlobUrl = URL.createObjectURL(blob);
     currentIndex = queue.indexOf(id);
-    
     audio.src = currentBlobUrl;
     
-    // 4. Play Safe
-    audio.play()
-        .then(() => {
-             updatePlayBtn(true);
-             if(isVizOn) drawVisualizer();
-        })
-        .catch(e => {
-            console.error("Play error:", e);
-            updatePlayBtn(false);
-            // Nếu lỗi do User Interaction chưa có, browser sẽ chặn. 
-        });
+    audio.play().then(() => {
+        if(isVizOn) drawVisualizer();
+        updateUI(true);
+    }).catch(e => console.error(e));
 
-    // 5. Update UI
+    // Update Meta UI
     document.getElementById('nowTitle').innerText = track.name;
-    document.getElementById('nowArtist').innerText = "Đang phát...";
     document.getElementById('barTitle').innerText = track.name;
-    document.getElementById('barArtist').innerText = "Đang phát...";
+    const coverHtml = track.cover ? `<img src="${track.cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵';
+    document.getElementById('mainCover').innerHTML = track.cover ? `<img src="${track.cover}" style="width:100%;height:100%;object-fit:cover">` : `<div style="font-size:40px; color:#555">🎵</div>`;
+    document.getElementById('barCover').innerHTML = coverHtml;
     
-    // Cover Handling
-    const coverHtml = track.cover 
-        ? `<img src="${track.cover}" style="width:100%;height:100%;object-fit:cover">`
-        : `<div style="font-size:40px; color:#555">🎵</div>`;
-        
-    document.getElementById('mainCover').innerHTML = coverHtml;
-    document.getElementById('barCover').innerHTML = track.cover ? `<img src="${track.cover}" style="width:100%;height:100%;object-fit:cover">` : '🎵';
-    
-    renderPlaylist();
     document.getElementById('playerBar').style.display = 'flex';
-    document.title = "▶ " + track.name;
-
-    // Media Session
+    renderPlaylist();
+    
     if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: track.name,
-            artist: 'Yuung Player',
+            title: track.name, artist: 'Yuung Player',
             artwork: track.cover ? [{ src: track.cover, sizes: '512x512', type: 'image/jpeg' }] : []
         });
     }
 }
 
-function togglePlay() {
-    // Luôn thử resume context trước khi play/pause
-    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
-    if (audio.paused) {
-        if(audio.src && audio.src !== window.location.href) {
-            audio.play().then(() => {
-                updatePlayBtn(true);
-                if(isVizOn) drawVisualizer();
-            });
-        } else if(queue.length > 0) {
-            playTrack(queue[0]);
-        }
-    } else {
-        audio.pause();
-        updatePlayBtn(false);
-        cancelAnimationFrame(animationId);
-    }
-}
-
-function updatePlayBtn(isPlaying) {
+function updateUI(isPlaying) {
     const txt = isPlaying ? '⏸' : '▶️';
     document.getElementById('playBtn').innerText = txt;
     document.getElementById('barPlay').innerText = txt;
 }
 
-function nextTrack() {
+// Basic Events
+document.getElementById('playBtn').onclick = () => audio.paused ? audio.play().then(()=>updateUI(true)) : (audio.pause(), updateUI(false));
+document.getElementById('barPlay').onclick = document.getElementById('playBtn').onclick;
+
+document.getElementById('nextBtn').onclick = () => {
     if(queue.length === 0) return;
-    let nextIdx = currentIndex + 1;
-    if(isShuffle) {
-        nextIdx = Math.floor(Math.random() * queue.length);
-    } else if (nextIdx >= queue.length) {
-        nextIdx = 0; 
-    }
+    let nextIdx = isShuffle ? Math.floor(Math.random() * queue.length) : currentIndex + 1;
+    if(nextIdx >= queue.length) nextIdx = 0;
     playTrack(queue[nextIdx]);
-}
+};
+document.getElementById('barNext').onclick = document.getElementById('nextBtn').onclick;
 
-function prevTrack() {
+document.getElementById('prevBtn').onclick = () => {
     if(queue.length === 0) return;
-    if (audio.currentTime > 3) {
-        audio.currentTime = 0;
-        return;
-    }
     let prevIdx = currentIndex - 1;
-    if (prevIdx < 0) prevIdx = queue.length - 1;
+    if(prevIdx < 0) prevIdx = queue.length - 1;
     playTrack(queue[prevIdx]);
+};
+document.getElementById('barPrev').onclick = document.getElementById('prevBtn').onclick;
+
+audio.addEventListener('timeupdate', () => {
+    if(!audio.duration) return;
+    document.getElementById('seek').value = (audio.currentTime / audio.duration) * 100;
+    const fmt = s => { const m=Math.floor(s/60),sec=Math.floor(s%60); return `${m}:${sec<10?'0':''}${sec}`; };
+    document.getElementById('currentTime').innerText = fmt(audio.currentTime);
+    document.getElementById('duration').innerText = fmt(audio.duration);
+});
+document.getElementById('seek').oninput = e => audio.currentTime = (e.target.value/100)*audio.duration;
+audio.addEventListener('ended', () => document.getElementById('nextBtn').click());
+
+// File Inputs
+document.getElementById('fileInput').onchange = async e => {
+    showLoader(true);
+    for(const file of e.target.files) {
+        const id = uid();
+        let cover = null;
+        // Basic Tag Reading (Simplified)
+        if(window.jsmediatags) {
+            try {
+                cover = await new Promise(r => jsmediatags.read(file, { onSuccess: t => {
+                    const p = t.tags.picture; 
+                    if(p) {
+                        let b=""; for(let i=0;i<p.data.length;i++) b+=String.fromCharCode(p.data[i]);
+                        r("data:"+p.format+";base64,"+btoa(b));
+                    } else r(null);
+                }, onError: ()=>r(null) }));
+            } catch(e){}
+        }
+        await saveFileDB(id, file);
+        tracks.push({id, name: file.name.replace(/\.[^/.]+$/, ""), size: file.size, cover});
+        queue.push(id);
+    }
+    saveMeta(); showLoader(false);
+};
+
+async function clearAllData() {
+    if(!confirm('Xóa toàn bộ dữ liệu máy? (Cloud vẫn giữ nếu đã sync)')) return;
+    await clearDB(); localStorage.removeItem(META_KEY); location.reload();
 }
 
-// --- UI RENDERING (Optimized DOM) ---
 function renderPlaylist() {
     const list = document.getElementById('playlist');
     const term = document.getElementById('searchInput').value.toLowerCase();
-    
-    // Performance: Sử dụng DocumentFragment để giảm reflow
-    const fragment = document.createDocumentFragment();
-    
-    tracks.forEach(t => {
-        if (term && !t.name.toLowerCase().includes(term)) return;
-        
-        const el = document.createElement('div');
-        el.className = `track ${t.id === (queue[currentIndex]) ? 'active' : ''}`;
-        
-        // Lazy load image text logic
-        const imgTag = t.cover 
-            ? `<img loading="lazy" src="${t.cover}" style="width:100%;height:100%;object-fit:cover;">` 
-            : `<span>🎵</span>`;
-
-        el.innerHTML = `
-            <div class="t-cover">${imgTag}</div>
-            <div class="t-info">
-                <div class="t-title">${t.name}</div>
-                <div class="t-sub">${(t.size/1024/1024).toFixed(1)} MB</div>
-            </div>
-            <button class="btn" style="padding:5px 10px; color: #ff4757" onclick="event.stopPropagation(); deleteTrack('${t.id}')">✕</button>
-        `;
-        el.onclick = () => playTrack(t.id);
-        fragment.appendChild(el);
-    });
-    
     list.innerHTML = '';
-    list.appendChild(fragment);
+    tracks.forEach(t => {
+        if(term && !t.name.toLowerCase().includes(term)) return;
+        const div = document.createElement('div');
+        div.className = `track ${t.id === queue[currentIndex] ? 'active' : ''}`;
+        div.innerHTML = `
+            <div class="t-cover">${t.cover ? `<img src="${t.cover}" style="width:100%">` : '🎵'}</div>
+            <div class="t-info"><div class="t-title">${t.name}</div><div class="t-sub">${(t.size/1e6).toFixed(1)}MB</div></div>
+            <button class="btn" onclick="event.stopPropagation(); deleteTrack('${t.id}')">✕</button>
+        `;
+        div.onclick = () => playTrack(t.id);
+        list.appendChild(div);
+    });
 }
-
-// --- FILE HANDLING ---
-
-function showLoader(show, text="Đang xử lý...") { 
-    document.getElementById('loader').style.display = show ? 'flex' : 'none'; 
-    document.getElementById('loaderText').innerText = text;
-}
-
-async function handleFileSelect(files) {
-    showLoader(true, "Đang đọc file...");
-    let count = 0;
-    
-    for (const file of files) {
-        try {
-            const id = uid();
-            let cover = null;
-            
-            // Read ID3 Tag
-            if (window.jsmediatags) {
-                try {
-                    cover = await new Promise(r => {
-                        jsmediatags.read(file, {
-                            onSuccess: tag => {
-                                const pic = tag.tags.picture;
-                                if (pic) {
-                                    let base64String = "";
-                                    for (let i = 0; i < pic.data.length; i++) base64String += String.fromCharCode(pic.data[i]);
-                                    r("data:" + pic.format + ";base64," + window.btoa(base64String));
-                                } else r(null);
-                            },
-                            onError: () => r(null)
-                        });
-                    });
-                } catch(e){}
-            }
-
-            // Save to DB
-            await saveFileDB(id, file);
-            
-            tracks.push({
-                id: id,
-                name: file.name.replace(/\.[^/.]+$/, ""),
-                type: file.type,
-                size: file.size,
-                saved: true,
-                cover: cover // Lưu ý: cover quá nặng sẽ làm đầy localStorage
-            });
-            queue.push(id);
-            count++;
-        } catch(e) { console.error("File import failed", e); }
-    }
-    
-    saveMeta();
-    renderPlaylist();
-    showLoader(false);
-    if(count > 0 && audio.paused && currentIndex === -1) playTrack(tracks[tracks.length - count].id);
-}
-
 async function deleteTrack(id) {
-    if(!confirm('Xóa bài này?')) return;
-    await deleteFileDB(id);
-    tracks = tracks.filter(t => t.id !== id);
-    queue = tracks.map(t => t.id);
-    if (currentIndex >= queue.length) currentIndex = 0;
-    saveMeta();
-    renderPlaylist();
+    if(!confirm('Xóa?')) return;
+    await deleteFileDB(id); tracks = tracks.filter(t=>t.id!==id); queue=tracks.map(t=>t.id); saveMeta();
 }
-
-async function clearAllData() {
-    if(!confirm('XÓA TOÀN BỘ dữ liệu nhạc offline?')) return;
-    await clearDB();
-    localStorage.removeItem(META_KEY);
-    location.reload();
-}
-
-// --- ZIP EXPORT / IMPORT ---
-
-document.getElementById('zipExportBtn').onclick = async () => {
-    if(tracks.length === 0) return alert("Playlist trống!");
-    showLoader(true, "Đang nén file...");
-    
-    try {
-        const zip = new JSZip();
-        zip.file("playlist_meta.json", JSON.stringify(tracks));
-        
-        for(const t of tracks) {
-            const blob = await getFileDB(t.id);
-            if(blob) {
-                const ext = t.type.includes('mpeg') ? 'mp3' : 'bin';
-                zip.file(`${t.id}.${ext}`, blob);
-            }
-        }
-        
-        const content = await zip.generateAsync({type:"blob"});
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(content);
-        a.download = `Yuung_Backup_${new Date().toISOString().slice(0,10)}.zip`;
-        a.click();
-    } catch(e) { alert("Lỗi Export: " + e.message); }
-    
-    showLoader(false);
-};
-
-document.getElementById('importInput').onchange = async (e) => {
-    const file = e.target.files[0];
-    if(!file) return;
-    showLoader(true, "Đang giải nén...");
-
-    try {
-        if (!file.name.endsWith('.zip')) throw new Error("Chỉ hỗ trợ file .zip");
-        const zip = await JSZip.loadAsync(file);
-        
-        if(zip.file("playlist_meta.json")) {
-            const metaStr = await zip.file("playlist_meta.json").async("string");
-            const newTracks = JSON.parse(metaStr);
-            
-            for(const t of newTracks) {
-                // Find matching file in zip (id + any extension)
-                const zipFileName = Object.keys(zip.files).find(n => n.startsWith(t.id));
-                if(zipFileName) {
-                    const blob = await zip.file(zipFileName).async("blob");
-                    await saveFileDB(t.id, blob);
-                    
-                    if(!tracks.find(x => x.id === t.id)) {
-                        tracks.push(t);
-                        queue.push(t.id);
-                    }
-                }
-            }
-            saveMeta();
-            renderPlaylist();
-            alert("Import thành công!");
-        } else {
-            alert("File ZIP không hợp lệ.");
-        }
-    } catch(err) {
-        console.error(err);
-        alert("Lỗi: " + err.message);
-    }
-    showLoader(false);
-    e.target.value = '';
-};
-
-// --- EVENTS ---
-
-document.getElementById('fileInput').onchange = e => handleFileSelect(e.target.files);
-document.getElementById('coverInput').onchange = e => {
-    const f = e.target.files[0];
-    if(!f) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-        if (tracks.length > 0) {
-            tracks.forEach(t => { if(!t.cover) t.cover = reader.result; });
-            saveMeta(); renderPlaylist();
-            if(currentIndex > -1) playTrack(queue[currentIndex]); 
-        }
-    };
-    reader.readAsDataURL(f);
-};
-
-document.getElementById('playBtn').onclick = togglePlay;
-document.getElementById('barPlay').onclick = togglePlay;
-document.getElementById('nextBtn').onclick = nextTrack;
-document.getElementById('barNext').onclick = nextTrack;
-document.getElementById('prevBtn').onclick = prevTrack;
-document.getElementById('barPrev').onclick = prevTrack;
-
-document.getElementById('shuffleBtn').onclick = () => {
-    isShuffle = !isShuffle;
-    document.getElementById('shuffleBtn').innerText = isShuffle ? '🔀 ON' : '🔀 Off';
-    document.getElementById('shuffleBtn').style.color = isShuffle ? 'var(--accent)' : 'var(--text)';
-};
-document.getElementById('repeatBtn').onclick = () => {
-    repeatMode = (repeatMode + 1) % 3;
-    const labels = ['🔁 Off', '🔁 All', '🔂 One'];
-    document.getElementById('repeatBtn').innerText = labels[repeatMode];
-    document.getElementById('repeatBtn').style.color = repeatMode > 0 ? 'var(--accent)' : 'var(--text)';
-};
-
-// Time update & Seek
-audio.addEventListener('timeupdate', () => {
-    if(!audio.duration) return;
-    const pct = (audio.currentTime / audio.duration) * 100;
-    document.getElementById('seek').value = pct;
-    
-    const fmt = s => {
-        const m = Math.floor(s/60);
-        const sec = Math.floor(s%60);
-        return `${m}:${sec<10?'0':''}${sec}`;
-    };
-    document.getElementById('currentTime').innerText = fmt(audio.currentTime);
-    document.getElementById('duration').innerText = fmt(audio.duration);
-    
-    if ('mediaSession' in navigator) {
-        navigator.mediaSession.setPositionState({
-            duration: audio.duration,
-            playbackRate: audio.playbackRate,
-            position: audio.currentTime
-        });
-    }
-});
-
-audio.addEventListener('ended', () => {
-    if(repeatMode === 2) { audio.currentTime = 0; audio.play(); }
-    else nextTrack();
-});
-
-document.getElementById('seek').oninput = (e) => {
-    if(audio.duration) audio.currentTime = (e.target.value / 100) * audio.duration;
-};
-
 document.getElementById('searchInput').oninput = renderPlaylist;
 
-// Theme
+// UI Helpers
+function showLoader(show, txt="Đang xử lý...") {
+    document.getElementById('loader').style.display = show ? 'flex' : 'none';
+    document.getElementById('loaderText').innerText = txt;
+    if(!show) document.getElementById('progressWrap').style.display='none';
+}
 function toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';
     html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-    document.getElementById('metaThemeColor').setAttribute('content', isDark ? '#0b7fa8' : '#0d1f27');
-    localStorage.setItem('yuung_theme', isDark ? 'light' : 'dark');
-}
-if(localStorage.getItem('yuung_theme') === 'dark') toggleTheme();
-
-// Shortcuts
-document.addEventListener('keydown', (e) => {
-    if(e.target.tagName === 'INPUT') return;
-    switch(e.code) {
-        case 'Space': e.preventDefault(); togglePlay(); break;
-        case 'ArrowRight': audio.currentTime += 5; break;
-        case 'ArrowLeft': audio.currentTime -= 5; break;
-    }
-});
-
-// PWA Handlers
-if ('mediaSession' in navigator) {
-    navigator.mediaSession.setActionHandler('play', togglePlay);
-    navigator.mediaSession.setActionHandler('pause', togglePlay);
-    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
-    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
 }
 
-// Start
+// Init
 loadMeta();
 </script>
 </body>
